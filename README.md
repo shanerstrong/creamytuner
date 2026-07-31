@@ -2,7 +2,7 @@
 
 CreamyTuner is an offline-first Expo app for building, saving, and spinning frozen-dessert recipes. The local MVP runs on iOS and Android from one TypeScript codebase and uses deterministic recipe guidance—no account, cloud service, analytics, subscription, or generative AI is required.
 
-Live web demo: <https://shanerstrong.github.io/CreamyTuner/>
+Live web demo: <https://shanerstrong.github.io/creamytuner/>
 
 ## What is included
 
