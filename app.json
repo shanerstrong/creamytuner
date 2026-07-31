@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "CreamyTuner",
+    "slug": "creamytuner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "creamytuner",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.creamytuner.app"
+    },
+    "android": {
+      "package": "com.creamytuner.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#090D20",
+        "foregroundImage": "./assets/images/android-icon-foreground.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#090D20",
+          "dark": {
+            "backgroundColor": "#090D20"
+          }
+        }
+      ],
+      "expo-sqlite",
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true,
+      "baseUrl": "/CreamyTuner"
+    }
+  }
+}
