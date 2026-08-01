@@ -42,6 +42,16 @@ export const ingredientSchema = z.object({
   nutrition: nutritionSchema,
   rating: z.number().min(0).max(5).optional(),
   benefit: z.string().optional(),
+  brand: z.string().default(''),
+  description: z.string().default(''),
+  referenceLabel: z.string().default(''),
+  sourceUrl: z.string().url().or(z.literal('')).default(''),
+  sourceCheckedAt: z.string().default(''),
+  popularityRank: z.number().int().nonnegative().default(999),
+  tags: z.array(z.string()).default([]),
+  typicalUses: z.array(z.string()).default([]),
+  substitutions: z.array(z.string()).default([]),
+  cautions: z.array(z.string()).default([]),
   isCustom: z.boolean().default(false),
 });
 
@@ -73,6 +83,7 @@ export const userSettingsSchema = z.object({
   measurementMode: measurementModeSchema.default('kitchen'),
   darkMode: z.literal(true).default(true),
   notifications: z.boolean().default(false),
+  ingredientLibraryView: z.enum(['list', 'grid']).default('list'),
 });
 
 export type IngredientCategory = z.infer<typeof ingredientCategorySchema>;
@@ -81,7 +92,10 @@ export type DisplayUnit = z.infer<typeof displayUnitSchema>;
 export type MeasurementMode = z.infer<typeof measurementModeSchema>;
 export type RecipeStyle = z.infer<typeof recipeStyleSchema>;
 export type Nutrition = z.infer<typeof nutritionSchema>;
-export type Ingredient = z.infer<typeof ingredientSchema>;
+type ParsedIngredient = z.infer<typeof ingredientSchema>;
+type IngredientMetadataKey = 'brand' | 'description' | 'referenceLabel' | 'sourceUrl' | 'sourceCheckedAt' | 'popularityRank' | 'tags' | 'typicalUses' | 'substitutions' | 'cautions';
+// New catalog metadata stays optional to callers; persistence fills defaults on parse.
+export type Ingredient = Omit<ParsedIngredient, IngredientMetadataKey> & Partial<Pick<ParsedIngredient, IngredientMetadataKey>>;
 export type RecipeIngredient = z.infer<typeof recipeIngredientSchema>;
 export type Recipe = z.infer<typeof recipeSchema>;
 export type UserSettings = z.infer<typeof userSettingsSchema>;

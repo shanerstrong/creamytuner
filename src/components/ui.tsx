@@ -23,6 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { recipeImages } from '@/src/assets';
 import { gradients, palette, radii, shadows, spacing } from '@/src/theme';
 import type { Nutrition, Recipe } from '@/src/types';
+import { NutritionSummary } from '@/src/components/nutrition';
 
 export type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
@@ -141,18 +142,7 @@ export function SectionTitle({ title, action, onAction }: { title: string; actio
 }
 
 export function NutritionStrip({ nutrition, compact = false }: { nutrition: Nutrition; compact?: boolean }) {
-  const metrics = [
-    ['Calories', `${Math.round(nutrition.calories)}`],
-    ['Protein', `${Math.round(nutrition.protein)}g`],
-    ['Fiber', `${Math.round(nutrition.fiber)}g`],
-    ['Sugar', `${Math.round(nutrition.sugar)}g`],
-    ['Fat', `${Math.round(nutrition.fat)}g`],
-  ];
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.nutritionStrip, compact && styles.nutritionCompact]}>
-      {metrics.map(([label, value]) => <View key={label} style={styles.nutritionMetric}><Text style={styles.metricLabel}>{label}</Text><Text style={styles.metricValue}>{value}</Text>{label === 'Fiber' ? <Text style={styles.metricNote}>{Math.round((nutrition.fiber / 28) * 100)}% DV</Text> : null}</View>)}
-    </ScrollView>
-  );
+  return <NutritionSummary nutrition={nutrition} compact={compact} />;
 }
 
 export function RecipeCard({ recipe, onPress, onFavorite, wide = false }: { recipe: Recipe; onPress: () => void; onFavorite?: () => void; wide?: boolean }) {
