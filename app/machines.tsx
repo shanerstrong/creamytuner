@@ -55,9 +55,9 @@ const styles = StyleSheet.create({
   machineActive: { borderColor: palette.pink, borderWidth: 2 },
   machineArt: { width: 72, height: 72, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(174,134,255,0.08)', marginBottom: spacing.sm },
   machineArtActive: { backgroundColor: 'rgba(241,78,155,0.13)' },
-  machineName: { color: palette.text, fontWeight: '800', fontSize: 15, textAlign: 'center' },
+  machineName: { color: palette.text, fontWeight: '800', fontSize: 17, lineHeight: 22, textAlign: 'center' },
   machineSubtitle: { ...textStyles.caption, textAlign: 'center', marginTop: 4 },
   selected: { position: 'absolute', top: spacing.xs, right: spacing.xs, width: 24, height: 24, borderRadius: 12, backgroundColor: palette.pink, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
-  legacy: { color: palette.warning, fontSize: 10, fontWeight: '700', marginTop: 5 },
+  legacy: { color: palette.warning, fontSize: 13, lineHeight: 18, fontWeight: '700', marginTop: 5 },
   note: { ...textStyles.caption, textAlign: 'center', color: palette.textFaint, marginBottom: spacing.lg },
 });

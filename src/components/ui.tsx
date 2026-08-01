@@ -159,6 +159,7 @@ export function RecipeCard({ recipe, onPress, onFavorite, wide = false }: { reci
     <Pressable onPress={onPress} style={({ pressed }) => [styles.recipeCard, wide && styles.recipeCardWide, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`Open ${recipe.name}`}>
       <ImageBackground source={recipeImages[recipe.imageKey]} style={styles.recipeImage} imageStyle={styles.recipeImageRadius}>
         <LinearGradient colors={['transparent', 'rgba(5, 8, 24, 0.95)']} style={StyleSheet.absoluteFill} />
+        {recipe.isTemplate ? <View style={styles.templateBadge}><Text style={styles.templateBadgeText}>Starter template</Text></View> : null}
         {onFavorite ? <Pressable onPress={(event) => { event.stopPropagation(); onFavorite(); }} style={styles.recipeFavorite} accessibilityLabel={recipe.favorite ? 'Remove favorite' : 'Add favorite'}><Icon name={recipe.favorite ? 'heart' : 'heart-outline'} size={21} color={recipe.favorite ? palette.pink : palette.white} /></Pressable> : null}
         <View style={styles.recipeCardCopy}>
           <Text style={styles.recipeCardTitle} numberOfLines={2}>{recipe.name}</Text>
@@ -190,8 +191,8 @@ export function EmptyState({ icon, title, message, action, onAction }: { icon: I
 export const textStyles = StyleSheet.create({
   title: { color: palette.text, fontSize: 30, lineHeight: 35, fontWeight: '800' },
   heading: { color: palette.text, fontSize: 22, lineHeight: 27, fontWeight: '800' },
-  body: { color: palette.textMuted, fontSize: 15, lineHeight: 22 },
-  caption: { color: palette.textMuted, fontSize: 12, lineHeight: 17 },
+  body: { color: palette.textMuted, fontSize: 16, lineHeight: 24 },
+  caption: { color: palette.textMuted, fontSize: 13, lineHeight: 19 },
 });
 
 const styles = StyleSheet.create({
@@ -205,9 +206,9 @@ const styles = StyleSheet.create({
   headerSide: { width: 50, alignItems: 'flex-start' },
   headerRight: { alignItems: 'flex-end' },
   headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { color: palette.text, fontSize: 20, fontWeight: '800', textAlign: 'center' },
-  headerSubtitle: { color: palette.textMuted, fontSize: 12, marginTop: 2, textAlign: 'center' },
-  iconButton: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.055)' },
+  headerTitle: { color: palette.text, fontSize: 22, lineHeight: 28, fontWeight: '800', textAlign: 'center' },
+  headerSubtitle: { color: palette.textMuted, fontSize: 14, lineHeight: 19, marginTop: 2, textAlign: 'center' },
+  iconButton: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.055)' },
   logoMark: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden', ...shadows.glow },
   wordmarkRow: { flexDirection: 'row', alignItems: 'baseline' },
   wordmark: { color: palette.text, fontSize: 25, fontWeight: '900', letterSpacing: -1 },
@@ -221,35 +222,37 @@ const styles = StyleSheet.create({
   buttonText: { color: palette.white, fontSize: 15, fontWeight: '800' },
   pressed: { opacity: 0.78, transform: [{ scale: 0.985 }] },
   disabled: { opacity: 0.45 },
-  pill: { overflow: 'hidden', borderWidth: 1, borderColor: palette.border, paddingHorizontal: spacing.sm, paddingVertical: 7, borderRadius: radii.pill, backgroundColor: 'rgba(17,25,49,0.8)' },
+  pill: { minHeight: 44, overflow: 'hidden', borderWidth: 1, borderColor: palette.border, paddingHorizontal: spacing.md, paddingVertical: 9, borderRadius: radii.pill, backgroundColor: 'rgba(17,25,49,0.8)', justifyContent: 'center' },
   pillActive: { borderColor: 'rgba(226,201,255,0.7)' },
-  pillText: { color: palette.textMuted, fontSize: 12, fontWeight: '700', zIndex: 1 },
+  pillText: { color: palette.textMuted, fontSize: 14, lineHeight: 19, fontWeight: '700', zIndex: 1 },
   pillTextActive: { color: '#14122B' },
-  actionCard: { minHeight: 146, padding: spacing.md, alignItems: 'center', justifyContent: 'center' },
+  actionCard: { minHeight: 172, padding: spacing.md, alignItems: 'center', justifyContent: 'center' },
   actionIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
-  actionTitle: { color: palette.text, fontSize: 14, fontWeight: '800', textAlign: 'center' },
-  actionSubtitle: { color: palette.textMuted, fontSize: 10.5, lineHeight: 14, textAlign: 'center', marginTop: 4 },
+  actionTitle: { color: palette.text, fontSize: 17, lineHeight: 22, fontWeight: '800', textAlign: 'center' },
+  actionSubtitle: { color: palette.textMuted, fontSize: 14, lineHeight: 19, textAlign: 'center', marginTop: 5 },
   sectionTitleRow: { marginTop: spacing.lg, marginBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { color: palette.text, fontSize: 18, fontWeight: '800' },
-  sectionAction: { color: palette.pink, fontSize: 13, fontWeight: '700' },
+  sectionTitle: { color: palette.text, fontSize: 21, lineHeight: 27, fontWeight: '800' },
+  sectionAction: { color: palette.pink, fontSize: 15, fontWeight: '700' },
   nutritionStrip: { flexDirection: 'row', borderRadius: radii.md, borderWidth: 1, borderColor: palette.border, backgroundColor: 'rgba(10,16,37,0.76)', paddingVertical: spacing.sm, paddingHorizontal: spacing.xs },
   nutritionCompact: { borderWidth: 0, backgroundColor: 'rgba(10,16,37,0.84)' },
   nutritionMetric: { flex: 1, alignItems: 'center' },
-  metricLabel: { color: palette.textMuted, fontSize: 10 },
-  metricValue: { color: palette.text, fontSize: 15, fontWeight: '800', marginTop: 2 },
+  metricLabel: { color: palette.textMuted, fontSize: 13, lineHeight: 17 },
+  metricValue: { color: palette.text, fontSize: 17, fontWeight: '800', marginTop: 2 },
   recipeCard: { width: '47.5%', aspectRatio: 0.83, borderRadius: radii.md, overflow: 'hidden', borderWidth: 1, borderColor: palette.border, backgroundColor: 'transparent' },
   recipeCardWide: { width: '100%', aspectRatio: 1.65 },
   recipeImage: { width: '100%', height: '100%', justifyContent: 'flex-end' },
   recipeImageRadius: { borderRadius: radii.md },
   recipeFavorite: { position: 'absolute', top: spacing.sm, right: spacing.sm, width: 34, height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 17, backgroundColor: 'rgba(8,11,28,0.62)' },
+  templateBadge: { position: 'absolute', top: spacing.sm, left: spacing.sm, paddingHorizontal: spacing.xs, paddingVertical: 5, borderRadius: radii.pill, backgroundColor: 'rgba(9,13,32,0.78)', borderWidth: 1, borderColor: 'rgba(241,78,155,0.5)' },
+  templateBadgeText: { color: palette.pink, fontSize: 13, fontWeight: '900' },
   recipeCardCopy: { padding: spacing.sm },
-  recipeCardTitle: { color: palette.text, fontSize: 14, lineHeight: 17, fontWeight: '800' },
-  recipeCardMeta: { color: palette.textMuted, fontSize: 10.5, marginTop: 4 },
+  recipeCardTitle: { color: palette.text, fontSize: 16, lineHeight: 21, fontWeight: '800' },
+  recipeCardMeta: { color: palette.textMuted, fontSize: 13, lineHeight: 18, marginTop: 4 },
   searchField: { minHeight: 48, borderRadius: radii.md, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.panelSoft, paddingHorizontal: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  searchInput: { color: palette.text, flex: 1, fontSize: 14, paddingVertical: spacing.sm },
+  searchInput: { color: palette.text, flex: 1, fontSize: 16, paddingVertical: spacing.sm },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg },
-  muted: { color: palette.textMuted },
+  muted: { color: palette.textMuted, fontSize: 16 },
   empty: { padding: spacing.xl, alignItems: 'center', gap: spacing.sm },
   emptyTitle: { color: palette.text, fontSize: 19, fontWeight: '800' },
-  emptyMessage: { color: palette.textMuted, fontSize: 14, lineHeight: 21, textAlign: 'center', marginBottom: spacing.sm },
+  emptyMessage: { color: palette.textMuted, fontSize: 16, lineHeight: 24, textAlign: 'center', marginBottom: spacing.sm },
 });

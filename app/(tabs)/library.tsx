@@ -53,8 +53,8 @@ const styles = StyleSheet.create({
   ingredientIcon: { width: 48, height: 48, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(174,134,255,0.12)' },
   copy: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  name: { color: palette.text, fontSize: 14, fontWeight: '800' },
-  custom: { color: palette.cyan, fontSize: 8, fontWeight: '900', letterSpacing: 0.6 },
-  meta: { color: palette.textMuted, fontSize: 11, marginTop: 1 },
-  benefit: { color: palette.warning, fontSize: 10.5, marginTop: 4 },
+  name: { color: palette.text, fontSize: 16, lineHeight: 21, fontWeight: '800' },
+  custom: { color: palette.cyan, fontSize: 13, fontWeight: '900', letterSpacing: 0.6 },
+  meta: { color: palette.textMuted, fontSize: 14, lineHeight: 19, marginTop: 2 },
+  benefit: { color: palette.warning, fontSize: 14, lineHeight: 19, marginTop: 4 },
 });

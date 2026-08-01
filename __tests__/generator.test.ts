@@ -1,5 +1,5 @@
 import { seededIngredients } from '@/src/data/ingredients';
-import { generateRecipe, recommendProgram, validateRecipe } from '@/src/domain/generator';
+import { generateRecipe, recommendGuidedRecipe, recommendProgram, validateRecipe } from '@/src/domain/generator';
 
 describe('guided recipe engine', () => {
   it('blocks recipes that exceed the selected machine fill target', () => {
@@ -27,5 +27,17 @@ describe('guided recipe engine', () => {
       items: [{ ingredientId: 'skim-milk', amount: 300, unit: 'ml' }, { ingredientId: 'whey-vanilla', amount: 30, unit: 'g' }],
     });
     expect(recommendProgram(recipe, 'breeze').program.id).toBe('lite-ice-cream');
+  });
+
+  it('recommends a pantry-aware thick base and substitutes soy milk when available', () => {
+    const recommendation = recommendGuidedRecipe({
+      preferences: { style: 'ice-cream', flavor: 'anything', craving: 'thick and creamy' },
+      availableIngredientIds: ['soy-milk', 'whey-vanilla', 'cottage-cheese-low-fat', 'cream-cheese', 'xanthan-gum'],
+      ingredients: seededIngredients,
+      machineId: 'nc501',
+    });
+    expect(recommendation.suggestedItems.find((item) => item.ingredientId === 'soy-milk')).toBeTruthy();
+    expect(recommendation.rationale).toContain('soy milk');
+    expect(recommendation.missing.map((item) => item.id)).toContain('milk-2');
   });
 });

@@ -71,8 +71,8 @@ function Field(props: React.ComponentProps<typeof TextInput> & { label: string }
 
 const styles = StyleSheet.create({
   field: { marginBottom: spacing.md },
-  label: { color: palette.textMuted, fontSize: 12, fontWeight: '700', marginBottom: spacing.xs },
-  input: { minHeight: 49, borderRadius: radii.md, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.panelSoft, color: palette.text, paddingHorizontal: spacing.sm, fontSize: 15 },
+  label: { color: palette.textMuted, fontSize: 16, lineHeight: 21, fontWeight: '700', marginBottom: spacing.xs },
+  input: { minHeight: 52, borderRadius: radii.md, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.panelSoft, color: palette.text, paddingHorizontal: spacing.sm, fontSize: 16 },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.md },
   row: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   half: { width: '48%' },

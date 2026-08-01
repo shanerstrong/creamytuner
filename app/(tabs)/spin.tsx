@@ -67,7 +67,7 @@ export default function SpinAssistantScreen() {
 
 const styles = StyleSheet.create({
   recipe: { color: palette.text, fontSize: 18, fontWeight: '800', textAlign: 'center', marginTop: spacing.sm },
-  intro: { color: palette.textMuted, textAlign: 'center', fontSize: 13, marginBottom: spacing.lg },
+  intro: { color: palette.textMuted, textAlign: 'center', fontSize: 16, lineHeight: 22, marginBottom: spacing.lg },
   timeline: { gap: spacing.xs, marginBottom: spacing.lg, position: 'relative' },
   line: { position: 'absolute', left: 24, top: 30, bottom: 30, width: 2, backgroundColor: palette.border },
   step: { minHeight: 72, padding: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
@@ -77,8 +77,8 @@ const styles = StyleSheet.create({
   stepActive: { backgroundColor: palette.lavender },
   stepNumberText: { color: palette.text, fontWeight: '800' },
   stepCopy: { flex: 1 },
-  stepName: { color: palette.text, fontSize: 14, fontWeight: '800' },
-  stepDescription: { color: palette.textMuted, fontSize: 11, marginTop: 2 },
+  stepName: { color: palette.text, fontSize: 17, lineHeight: 22, fontWeight: '800' },
+  stepDescription: { color: palette.textMuted, fontSize: 14, lineHeight: 19, marginTop: 2 },
   evaluate: { padding: spacing.md, gap: spacing.sm },
   evaluateTitle: { color: palette.text, fontWeight: '800', textAlign: 'center' },
   textureRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, justifyContent: 'center' },

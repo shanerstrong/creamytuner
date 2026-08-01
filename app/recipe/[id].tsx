@@ -30,7 +30,7 @@ export default function RecipeDetailsScreen() {
       <AppHeader title="Recipe Details" left={<IconButton icon="chevron-left" label="Go back" onPress={() => router.back()} />} right={<IconButton icon={recipe.favorite ? 'heart' : 'heart-outline'} color={recipe.favorite ? palette.pink : palette.text} label="Toggle favorite" onPress={() => toggleFavorite(recipe.id)} />} />
       <ImageBackground source={recipeImages[recipe.imageKey]} style={styles.hero} imageStyle={styles.heroImage}>
         <LinearGradient colors={['transparent', 'rgba(8,12,31,0.97)']} style={StyleSheet.absoluteFill} />
-        <View style={styles.heroCopy}><Text style={styles.title}>{recipe.name}</Text><Text style={styles.style}>{recipe.style.replaceAll('-', ' ').toUpperCase()}</Text></View>
+        <View style={styles.heroCopy}>{recipe.isTemplate ? <Text style={styles.template}>STARTER TEMPLATE</Text> : null}<Text style={styles.title}>{recipe.name}</Text><Text style={styles.style}>{recipe.style.replaceAll('-', ' ')}</Text></View>
       </ImageBackground>
       <NutritionStrip nutrition={recipe.nutrition} />
       <View style={styles.actions}>
@@ -44,7 +44,7 @@ export default function RecipeDetailsScreen() {
       <GlassCard style={styles.detailCard}>
         {tab === 'ingredients' ? recipe.ingredients.map((item) => {
           const ingredient = ingredients.find((candidate) => candidate.id === item.ingredientId);
-          return <View key={item.ingredientId} style={styles.ingredientRow}><Text style={styles.ingredientName}>{ingredient?.name ?? 'Unknown ingredient'}</Text><Text style={styles.ingredientAmount}>{displayAmount(item.amount, item.unit, settings.units)}</Text></View>;
+          return <View key={item.ingredientId} style={styles.ingredientRow}><Text style={styles.ingredientName}>{ingredient?.name ?? 'Unknown ingredient'}</Text><Text style={styles.ingredientAmount}>{displayAmount(item.amount, item.unit, settings.units, settings.measurementMode)}</Text></View>;
         }) : null}
         {tab === 'directions' ? recipe.directions.map((direction, index) => <View key={direction} style={styles.direction}><View style={styles.directionNumber}><Text style={styles.directionNumberText}>{index + 1}</Text></View><Text style={styles.directionText}>{direction}</Text></View>) : null}
         {tab === 'nutrition' ? <View style={styles.nutritionDetails}><DetailMetric label="Calories" value={`${recipe.nutrition.calories}`} /><DetailMetric label="Protein" value={`${recipe.nutrition.protein} g`} /><DetailMetric label="Carbohydrates" value={`${recipe.nutrition.carbs} g`} /><DetailMetric label="Sugar" value={`${recipe.nutrition.sugar} g`} /><DetailMetric label="Fat" value={`${recipe.nutrition.fat} g`} /><DetailMetric label="Fiber" value={`${recipe.nutrition.fiber} g`} /></View> : null}
@@ -68,21 +68,22 @@ const styles = StyleSheet.create({
   heroImage: { borderBottomLeftRadius: radii.xl, borderBottomRightRadius: radii.xl },
   heroCopy: { padding: spacing.lg },
   title: { ...textStyles.title, fontSize: 27, lineHeight: 31, maxWidth: '90%' },
-  style: { color: palette.pink, fontSize: 10, fontWeight: '900', letterSpacing: 1, marginTop: spacing.xs },
+  template: { color: palette.pink, fontSize: 13, lineHeight: 18, fontWeight: '900', letterSpacing: 1, marginBottom: spacing.xs },
+  style: { color: palette.pink, fontSize: 15, lineHeight: 20, fontWeight: '900', marginTop: spacing.xs },
   actions: { flexDirection: 'row', gap: spacing.xs, justifyContent: 'flex-end', marginTop: spacing.sm, paddingHorizontal: spacing.md },
   tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginVertical: spacing.md, paddingHorizontal: spacing.md },
   detailCard: { marginHorizontal: spacing.md, paddingHorizontal: spacing.md, minHeight: 170 },
   ingredientRow: { minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: palette.border },
-  ingredientName: { color: palette.text, fontSize: 13, flex: 1 },
-  ingredientAmount: { color: palette.textMuted, fontSize: 12, fontWeight: '700' },
+  ingredientName: { color: palette.text, fontSize: 16, lineHeight: 21, flex: 1 },
+  ingredientAmount: { color: palette.textMuted, fontSize: 15, lineHeight: 20, fontWeight: '700' },
   direction: { flexDirection: 'row', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: palette.border },
   directionNumber: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(241,78,155,0.2)', alignItems: 'center', justifyContent: 'center' },
   directionNumberText: { color: palette.pink, fontWeight: '900' },
-  directionText: { ...textStyles.body, flex: 1, fontSize: 13, lineHeight: 19 },
+  directionText: { ...textStyles.body, flex: 1, fontSize: 16, lineHeight: 24 },
   nutritionDetails: { paddingVertical: spacing.xs },
   detailMetric: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: palette.border },
-  detailMetricLabel: { color: palette.textMuted, fontSize: 13 },
-  detailMetricValue: { color: palette.text, fontSize: 13, fontWeight: '800' },
+  detailMetricLabel: { color: palette.textMuted, fontSize: 16 },
+  detailMetricValue: { color: palette.text, fontSize: 16, fontWeight: '800' },
   notes: { ...textStyles.body, paddingVertical: spacing.md },
   bottomActions: { gap: spacing.sm, marginTop: spacing.lg, paddingHorizontal: spacing.md },
 });

@@ -2,7 +2,7 @@ import { seededIngredients } from '@/src/data/ingredients';
 import { calculateNutrition } from '@/src/domain/nutrition';
 import { recipeSchema, type Recipe, type RecipeIngredient, type RecipeStyle } from '@/src/types';
 
-function seedRecipe(id: string, name: string, style: RecipeStyle, ingredients: RecipeIngredient[], imageKey: Recipe['imageKey'], favorite = false): Recipe {
+function seedRecipe(id: string, name: string, style: RecipeStyle, ingredients: RecipeIngredient[], imageKey: Recipe['imageKey'], favorite = false, isTemplate = false, notes?: string): Recipe {
   const date = '2026-07-31T12:00:00.000Z';
   return recipeSchema.parse({
     id,
@@ -16,8 +16,9 @@ function seedRecipe(id: string, name: string, style: RecipeStyle, ingredients: R
       'Run the recommended program.',
       'Add mix-ins after the first spin and use the Mix-In program if desired.',
     ],
-    notes: 'Starter recipe. Adjust sweetness and flavor to taste before freezing.',
+    notes: notes ?? 'Starter recipe. Adjust sweetness and flavor to taste before freezing.',
     favorite,
+    isTemplate,
     imageKey,
     createdAt: date,
     updatedAt: date,
@@ -53,4 +54,13 @@ export const seededRecipes: Recipe[] = [
     { ingredientId: 'guar-gum', amount: 0.25, unit: 'tsp' },
     { ingredientId: 'cookie-pieces', amount: 20, unit: 'g' },
   ], 'cookies'),
+  seedRecipe('ultra-thick-base', 'Ultra-Thick Base', 'ice-cream', [
+    { ingredientId: 'milk-2', amount: 100, unit: 'ml' },
+    { ingredientId: 'almond-milk', amount: 300, unit: 'ml' },
+    { ingredientId: 'whey-vanilla', amount: 30, unit: 'g' },
+    { ingredientId: 'cottage-cheese-low-fat', amount: 50, unit: 'g' },
+    { ingredientId: 'cream-cheese', amount: 30, unit: 'g' },
+    { ingredientId: 'salt', amount: 0.125, unit: 'tsp' },
+    { ingredientId: 'xanthan-gum', amount: 0.25, unit: 'tsp' },
+  ], 'strawberry', false, true, 'A dense starter base: blend completely smooth before freezing. Soy milk is a thicker alternative to almond milk if you want more body. Nutrition is informational and based on stored label data.'),
 ];

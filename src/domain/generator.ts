@@ -1,6 +1,6 @@
 import { machineById, programs } from '@/src/data/machines';
 import { calculateNutrition, estimateVolumeMl } from '@/src/domain/nutrition';
-import type { Ingredient, ProgramRecommendation, Recipe, RecipeIngredient, RecipeStyle, RecipeValidation } from '@/src/types';
+import type { BuilderPreferences, GuidedRecommendation, Ingredient, ProgramRecommendation, Recipe, RecipeIngredient, RecipeStyle, RecipeValidation } from '@/src/types';
 
 export function validateRecipe(items: RecipeIngredient[], ingredients: Ingredient[], machineId: string): RecipeValidation {
   const machine = machineById(machineId);
@@ -63,8 +63,57 @@ export function generateRecipe(input: {
     ],
     notes: 'Nutrition is an estimate based on stored label data. Verify ingredient labels for dietary decisions.',
     favorite: input.favorite ?? false,
+    isTemplate: false,
     imageKey: input.imageKey ?? 'strawberry',
     createdAt: now,
     updatedAt: now,
+  };
+}
+
+const thickBaseItems: RecipeIngredient[] = [
+  { ingredientId: 'milk-2', amount: 100, unit: 'ml' },
+  { ingredientId: 'almond-milk', amount: 300, unit: 'ml' },
+  { ingredientId: 'whey-vanilla', amount: 30, unit: 'g' },
+  { ingredientId: 'cottage-cheese-low-fat', amount: 50, unit: 'g' },
+  { ingredientId: 'cream-cheese', amount: 30, unit: 'g' },
+  { ingredientId: 'salt', amount: 0.125, unit: 'tsp' },
+  { ingredientId: 'xanthan-gum', amount: 0.25, unit: 'tsp' },
+];
+
+export function recommendGuidedRecipe(input: {
+  preferences: BuilderPreferences;
+  availableIngredientIds: string[];
+  ingredients: Ingredient[];
+  machineId: string;
+}): GuidedRecommendation {
+  const availableIds = new Set(input.availableIngredientIds);
+  const craving = `${input.preferences.flavor} ${input.preferences.craving}`.toLowerCase();
+  const items = thickBaseItems.map((item) => ({ ...item }));
+  const warnings: string[] = [];
+  const almondIndex = items.findIndex((item) => item.ingredientId === 'almond-milk');
+  if (!availableIds.has('almond-milk') && availableIds.has('soy-milk') && almondIndex >= 0) items[almondIndex] = { ...items[almondIndex], ingredientId: 'soy-milk' };
+  if (craving.includes('chocolate') || craving.includes('brownie')) {
+    const proteinIndex = items.findIndex((item) => item.ingredientId === 'whey-vanilla');
+    if (proteinIndex >= 0) items[proteinIndex] = { ...items[proteinIndex], ingredientId: 'whey-chocolate' };
+    items.push({ ingredientId: 'cocoa', amount: 10, unit: 'g' });
+  }
+  if (craving.includes('mint')) items.push({ ingredientId: 'peppermint', amount: 0.25, unit: 'tsp' });
+  if (craving.includes('berry') || craving.includes('strawberry')) items.push({ ingredientId: 'strawberries', amount: 100, unit: 'g' });
+
+  const chosen = items.map((item) => input.ingredients.find((ingredient) => ingredient.id === item.ingredientId)).filter((ingredient): ingredient is Ingredient => Boolean(ingredient));
+  const missing = chosen.filter((ingredient) => !availableIds.has(ingredient.id));
+  const available = chosen.filter((ingredient) => availableIds.has(ingredient.id));
+  const optional = input.ingredients.filter((ingredient) => ['fruit', 'flavoring', 'mix-in'].includes(ingredient.category) && !chosen.some((item) => item.id === ingredient.id)).slice(0, 4);
+  if (!chosen.some((ingredient) => ingredient.category === 'base')) warnings.push('Choose at least one milk, yogurt, plant base, or fruit before saving.');
+  if (estimateVolumeMl(items) > machineById(input.machineId).capacityMl * 0.92) warnings.push('This suggestion is above the safe fill target for the selected machine.');
+  return {
+    suggestedItems: items,
+    available,
+    missing,
+    optional,
+    rationale: availableIds.has('soy-milk') && !availableIds.has('almond-milk')
+      ? 'I used soy milk because it is a thicker plant-based swap for almond milk.'
+      : 'This base layers dairy, protein, body, and a small amount of stabilizer for a dense, scoopable texture.',
+    warnings,
   };
 }

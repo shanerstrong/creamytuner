@@ -11,6 +11,8 @@ export const ingredientCategorySchema = z.enum([
 ]);
 
 export const unitSchema = z.enum(['g', 'ml', 'tsp']);
+export const displayUnitSchema = z.enum(['g', 'ml', 'tsp', 'tbsp', 'cup', 'oz', 'fl-oz']);
+export const measurementModeSchema = z.enum(['exact', 'kitchen']);
 export const recipeStyleSchema = z.enum([
   'ice-cream',
   'lite-ice-cream',
@@ -58,6 +60,7 @@ export const recipeSchema = z.object({
   directions: z.array(z.string()),
   notes: z.string().default(''),
   favorite: z.boolean().default(false),
+  isTemplate: z.boolean().default(false),
   imageKey: z.enum(['strawberry', 'chocolate', 'mint', 'cookies']).default('strawberry'),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -66,19 +69,42 @@ export const recipeSchema = z.object({
 export const userSettingsSchema = z.object({
   onboarded: z.boolean().default(false),
   machineId: z.string().default('nc501'),
-  units: z.enum(['metric', 'us']).default('metric'),
+  units: z.enum(['metric', 'us']).default('us'),
+  measurementMode: measurementModeSchema.default('kitchen'),
   darkMode: z.literal(true).default(true),
   notifications: z.boolean().default(false),
 });
 
 export type IngredientCategory = z.infer<typeof ingredientCategorySchema>;
 export type Unit = z.infer<typeof unitSchema>;
+export type DisplayUnit = z.infer<typeof displayUnitSchema>;
+export type MeasurementMode = z.infer<typeof measurementModeSchema>;
 export type RecipeStyle = z.infer<typeof recipeStyleSchema>;
 export type Nutrition = z.infer<typeof nutritionSchema>;
 export type Ingredient = z.infer<typeof ingredientSchema>;
 export type RecipeIngredient = z.infer<typeof recipeIngredientSchema>;
 export type Recipe = z.infer<typeof recipeSchema>;
 export type UserSettings = z.infer<typeof userSettingsSchema>;
+
+export const builderPreferencesSchema = z.object({
+  style: recipeStyleSchema,
+  flavor: z.string().default('anything'),
+  craving: z.string().default(''),
+});
+
+export const pantryStatusSchema = z.enum(['have', 'need', 'optional']);
+
+export type BuilderPreferences = z.infer<typeof builderPreferencesSchema>;
+export type PantryStatus = z.infer<typeof pantryStatusSchema>;
+
+export type GuidedRecommendation = {
+  suggestedItems: RecipeIngredient[];
+  available: Ingredient[];
+  missing: Ingredient[];
+  optional: Ingredient[];
+  rationale: string;
+  warnings: string[];
+};
 
 export type MachineProgram = {
   id: string;

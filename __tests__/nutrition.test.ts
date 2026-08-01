@@ -26,4 +26,10 @@ describe('nutrition engine', () => {
     expect(displayAmount(28.3495, 'g', 'us')).toBe('1 oz');
     expect(displayAmount(15, 'g', 'metric')).toBe('15 g');
   });
+
+  it('formats kitchen-friendly measurements as common fractions', () => {
+    expect(displayAmount(120, 'ml', 'us', 'kitchen')).toBe('½ cup');
+    expect(displayAmount(7.5, 'ml', 'us', 'kitchen')).toBe('1 ½ tsp');
+    expect(displayAmount(0.25, 'tsp', 'us', 'kitchen')).toBe('¼ tsp');
+  });
 });

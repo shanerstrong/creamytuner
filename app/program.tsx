@@ -54,18 +54,18 @@ export default function ProgramSelectionScreen() {
 }
 
 const styles = StyleSheet.create({
-  label: { color: palette.textMuted, fontSize: 12, fontWeight: '700', marginBottom: spacing.xs },
+  label: { color: palette.textMuted, fontSize: 16, lineHeight: 21, fontWeight: '700', marginBottom: spacing.xs },
   recipePills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.md },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   program: { width: '48.2%', minHeight: 154, padding: spacing.md },
   programActive: { borderColor: palette.pink, borderWidth: 2 },
   programIcon: { width: 44, height: 44, borderRadius: radii.md, backgroundColor: 'rgba(174,134,255,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
-  programName: { color: palette.text, fontSize: 14, fontWeight: '800' },
-  programDescription: { color: palette.textMuted, fontSize: 10.5, lineHeight: 14, marginTop: 4 },
-  recommended: { color: palette.pink, fontSize: 8, fontWeight: '900', letterSpacing: 0.7, position: 'absolute', top: spacing.xs, right: spacing.xs },
+  programName: { color: palette.text, fontSize: 17, lineHeight: 22, fontWeight: '800' },
+  programDescription: { color: palette.textMuted, fontSize: 14, lineHeight: 19, marginTop: 4 },
+  recommended: { color: palette.pink, fontSize: 13, fontWeight: '900', letterSpacing: 0.7, position: 'absolute', top: spacing.xs, right: spacing.xs },
   reason: { padding: spacing.md, flexDirection: 'row', gap: spacing.sm, marginVertical: spacing.md },
   reasonCopy: { flex: 1 },
-  reasonTitle: { color: palette.text, fontSize: 13, fontWeight: '800' },
-  reasonText: { color: palette.textMuted, fontSize: 11, lineHeight: 16, marginTop: 3 },
-  safety: { color: palette.textFaint, fontSize: 10.5, lineHeight: 15, textAlign: 'center', marginBottom: spacing.md },
+  reasonTitle: { color: palette.text, fontSize: 16, lineHeight: 21, fontWeight: '800' },
+  reasonText: { color: palette.textMuted, fontSize: 15, lineHeight: 21, marginTop: 3 },
+  safety: { color: palette.textFaint, fontSize: 13, lineHeight: 19, textAlign: 'center', marginBottom: spacing.md },
 });

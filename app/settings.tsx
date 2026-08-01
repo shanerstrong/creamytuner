@@ -17,7 +17,8 @@ export default function SettingsScreen() {
     <Screen>
       <AppHeader title="Settings" left={<IconButton icon="chevron-left" label="Go back" onPress={() => router.back()} />} />
       <View style={styles.list}>
-        <SettingRow icon="ruler-square" title="Units" value={settings.units === 'metric' ? 'Metric (g, ml)' : 'US (oz, fl oz)'} onPress={() => updateSettings({ units: settings.units === 'metric' ? 'us' : 'metric' })} />
+        <SettingRow icon="ruler-square" title="Unit system" value={settings.units === 'metric' ? 'Metric (g, ml)' : 'US (oz, fl oz)'} onPress={() => updateSettings({ units: settings.units === 'metric' ? 'us' : 'metric' })} />
+        <SettingRow icon="format-list-numbered" title="Measurement style" value={settings.measurementMode === 'kitchen' ? 'Kitchen-friendly (cups, tbsp, tsp)' : 'Exact amounts'} onPress={() => updateSettings({ measurementMode: settings.measurementMode === 'kitchen' ? 'exact' : 'kitchen' })} />
         <SettingRow icon="ice-cream" title="Default Machine" value={machine.shortName} onPress={() => router.push('/machines')} />
         <SettingRow icon="weather-night" title="Dark Mode" value="Always on in beta" />
         <GlassCard style={styles.row}>
@@ -53,10 +54,10 @@ const styles = StyleSheet.create({
   list: { gap: spacing.xs },
   row: { minHeight: 62, padding: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   copy: { flex: 1 },
-  title: { color: palette.text, fontSize: 13, fontWeight: '800' },
-  subtitle: { color: palette.textMuted, fontSize: 10.5, marginTop: 3 },
-  section: { color: palette.textFaint, fontSize: 10, fontWeight: '900', letterSpacing: 1, marginTop: spacing.lg, marginBottom: spacing.xs },
+  title: { color: palette.text, fontSize: 16, lineHeight: 21, fontWeight: '800' },
+  subtitle: { color: palette.textMuted, fontSize: 14, lineHeight: 19, marginTop: 3 },
+  section: { color: palette.textFaint, fontSize: 13, lineHeight: 18, fontWeight: '900', letterSpacing: 1, marginTop: spacing.lg, marginBottom: spacing.xs },
   reset: { minHeight: 54, padding: spacing.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderColor: 'rgba(255,107,131,0.5)', marginTop: spacing.lg },
-  resetText: { color: palette.danger, fontSize: 13, fontWeight: '800' },
-  disclaimer: { color: palette.textFaint, fontSize: 10, lineHeight: 15, textAlign: 'center', marginTop: spacing.lg },
+  resetText: { color: palette.danger, fontSize: 16, fontWeight: '800' },
+  disclaimer: { color: palette.textFaint, fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: spacing.lg },
 });
