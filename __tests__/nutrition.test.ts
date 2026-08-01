@@ -1,4 +1,4 @@
-import { calculateNutrition, displayAmount, displayUnitOptions, editableAmount, estimateVolumeMl, formatKitchenVolume, parseDisplayAmount } from '@/src/domain/nutrition';
+import { calculateNutrition, displayAmount, displayAmountStep, displayUnitOptions, editableAmount, estimateVolumeMl, formatKitchenVolume, parseDisplayAmount } from '@/src/domain/nutrition';
 import type { Ingredient } from '@/src/types';
 
 const ingredient: Ingredient = { id: 'test-protein', name: 'Test Protein', subtitle: '', category: 'protein', defaultUnit: 'g', defaultAmount: 30, referenceAmount: 30, nutrition: { calories: 120, protein: 24, carbs: 3, sugar: 2, fat: 2, fiber: 1 }, isCustom: false };
@@ -30,5 +30,13 @@ describe('nutrition engine', () => {
     expect(editableAmount(300, 'ml', 'cup')).toBeCloseTo(1.25);
     expect(parseDisplayAmount(2, 'tbsp', 'tsp')).toEqual({ amount: 6, unit: 'tsp' });
     expect(parseDisplayAmount(editableAmount(300, 'ml', 'cup'), 'cup').amount).toBeCloseTo(300);
+  });
+  it('uses practical increments for amount stepper controls', () => {
+    expect(displayAmountStep('cup')).toBe(0.25);
+    expect(displayAmountStep('tbsp')).toBe(1);
+    expect(displayAmountStep('tsp')).toBe(0.25);
+    expect(displayAmountStep('fl-oz')).toBe(0.5);
+    expect(displayAmountStep('ml')).toBe(10);
+    expect(displayAmountStep('g')).toBe(5);
   });
 });

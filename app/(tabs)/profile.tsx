@@ -31,9 +31,11 @@ export default function ProfileScreen() {
       <View style={styles.links}>
         {links.map((link) => (
           <GlassCard key={link.label} onPress={() => router.push(link.route)} accessibilityLabel={link.label} style={styles.link}>
-            <Icon name={link.icon} color={palette.lavender} />
-            <View style={styles.linkCopy}><Text style={styles.linkTitle}>{link.label}</Text><Text style={styles.linkSubtitle}>{link.subtitle}</Text></View>
-            <Icon name="chevron-right" color={palette.textFaint} />
+            <View style={styles.linkContent}>
+              <View style={styles.linkIcon}><Icon name={link.icon} color={palette.lavender} /></View>
+              <View style={styles.linkCopy}><Text style={styles.linkTitle}>{link.label}</Text><Text style={styles.linkSubtitle}>{link.subtitle}</Text></View>
+              <Icon name="chevron-right" color={palette.textMuted} />
+            </View>
           </GlassCard>
         ))}
       </View>
@@ -51,7 +53,9 @@ const styles = StyleSheet.create({
   statValue: { color: palette.text, fontSize: 21, fontWeight: '900' },
   statLabel: { color: palette.textMuted, fontSize: 13, lineHeight: 18, marginTop: 3 },
   links: { gap: spacing.xs, marginTop: spacing.sm },
-  link: { padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  link: { padding: spacing.md },
+  linkContent: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  linkIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(174,134,255,0.12)', alignItems: 'center', justifyContent: 'center' },
   linkCopy: { flex: 1 },
   linkTitle: { color: palette.text, fontSize: 16, lineHeight: 21, fontWeight: '800' },
   linkSubtitle: { color: palette.textMuted, fontSize: 14, lineHeight: 19, marginTop: 2 },

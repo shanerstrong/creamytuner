@@ -1,5 +1,5 @@
 import { seededIngredients } from '@/src/data/ingredients';
-import { generateRecipe, recommendGuidedRecipe, recommendProgram, validateRecipe } from '@/src/domain/generator';
+import { generateRecipe, getRecipeFixOptions, recommendGuidedRecipe, recommendProgram, validateRecipe } from '@/src/domain/generator';
 
 describe('guided recipe engine', () => {
   it('blocks recipes that exceed the selected machine fill target', () => {
@@ -47,5 +47,21 @@ describe('guided recipe engine', () => {
       availableIngredientIds: [], ingredients: seededIngredients, machineId: 'nc501',
     });
     expect(recommendation.optional.map((item) => item.id)).toEqual(expect.arrayContaining(['allulose', 'sugar', 'brown-sugar']));
+  });
+
+  it('offers explicit warning fixes without mutating the current recipe', () => {
+    const items = [{ ingredientId: 'skim-milk', amount: 300, unit: 'ml' as const }];
+    const validation = validateRecipe(items, seededIngredients, 'nc501');
+    const fixes = getRecipeFixOptions(items, seededIngredients, 'nc501', validation);
+    expect(items).toEqual([{ ingredientId: 'skim-milk', amount: 300, unit: 'ml' }]);
+    expect(fixes.map((fix) => fix.id)).toEqual(expect.arrayContaining(['add-allulose', 'add-sugar', 'add-xanthan-gum', 'add-guar-gum']));
+  });
+
+  it('offers a safe-fill option that lowers estimated volume', () => {
+    const items = [{ ingredientId: 'milk-2', amount: 700, unit: 'ml' as const }, { ingredientId: 'whey-vanilla', amount: 30, unit: 'g' as const }];
+    const validation = validateRecipe(items, seededIngredients, 'classic');
+    const fix = getRecipeFixOptions(items, seededIngredients, 'classic', validation).find((option) => option.id === 'fit-container');
+    expect(fix).toBeTruthy();
+    expect(validateRecipe(fix!.nextItems, seededIngredients, 'classic').estimatedVolumeMl).toBeLessThan(validation.estimatedVolumeMl);
   });
 });

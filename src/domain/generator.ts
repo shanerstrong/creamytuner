@@ -2,6 +2,13 @@ import { machineById, programs } from '@/src/data/machines';
 import { calculateNutrition, estimateVolumeMl } from '@/src/domain/nutrition';
 import type { BuilderPreferences, GuidedRecommendation, Ingredient, ProgramRecommendation, Recipe, RecipeIngredient, RecipeStyle, RecipeValidation } from '@/src/types';
 
+export type RecipeFixOption = {
+  id: string;
+  label: string;
+  detail: string;
+  nextItems: RecipeIngredient[];
+};
+
 export function validateRecipe(items: RecipeIngredient[], ingredients: Ingredient[], machineId: string): RecipeValidation {
   const machine = machineById(machineId);
   const estimatedVolumeMl = estimateVolumeMl(items);
@@ -14,6 +21,52 @@ export function validateRecipe(items: RecipeIngredient[], ingredients: Ingredien
   if (!categories.has('stabilizer')) warnings.push('A small amount of stabilizer can reduce iciness in lighter recipes.');
   if (items.length < 3) warnings.push('A balanced pint usually uses at least three ingredient roles.');
   return { estimatedVolumeMl, errors, warnings };
+}
+
+/** Explicit, user-triggered fixes. Calling this function never mutates the current recipe. */
+export function getRecipeFixOptions(items: RecipeIngredient[], ingredients: Ingredient[], machineId: string, validation = validateRecipe(items, ingredients, machineId)): RecipeFixOption[] {
+  const options: RecipeFixOption[] = [];
+  const selected = new Set(items.map((item) => item.ingredientId));
+  const machine = machineById(machineId);
+  const addIngredient = (id: string, amount: number, unit: RecipeIngredient['unit'], label: string, detail: string) => {
+    if (!ingredients.some((ingredient) => ingredient.id === id) || selected.has(id)) return;
+    options.push({ id: `add-${id}`, label, detail, nextItems: [...items, { ingredientId: id, amount, unit }] });
+  };
+
+  if (validation.errors.some((error) => /safe fill target|capacity|exceed/i.test(error))) {
+    const targetMl = Math.floor(machine.capacityMl * 0.88);
+    const liquidItems = items.filter((item) => item.unit === 'ml');
+    const liquidVolume = liquidItems.reduce((sum, item) => sum + item.amount, 0);
+    const nonLiquidVolume = estimateVolumeMl(items.filter((item) => item.unit !== 'ml'));
+    const scale = liquidVolume > 0 ? Math.max(0.1, Math.min(1, (targetMl - nonLiquidVolume) / liquidVolume)) : 1;
+    if (scale < 1) {
+      const nextItems = items.map((item) => item.unit === 'ml' ? { ...item, amount: Math.max(1, Number((item.amount * scale).toFixed(1))) } : item);
+      options.push({
+        id: 'fit-container',
+        label: 'Fit this container',
+        detail: `Reduce liquid ingredients by ${Math.round((1 - scale) * 100)}% to about ${estimateVolumeMl(nextItems)} ml.`,
+        nextItems,
+      });
+    }
+  }
+
+  if (validation.errors.some((error) => /milk|yogurt|plant base|fruit base/i.test(error))) {
+    addIngredient('milk-2', 240, 'ml', 'Add 1 cup 2% milk', 'Adds a familiar dairy base.');
+    addIngredient('almond-milk', 300, 'ml', 'Add almond milk', 'Adds 300 ml of a lighter plant base.');
+  }
+  if (validation.warnings.some((warning) => /low sugar|sweetener/i.test(warning))) {
+    addIngredient('allulose', 15, 'g', 'Add 15 g allulose', 'Helps soften the frozen texture with little added energy.');
+    addIngredient('sugar', 20, 'g', 'Add 20 g sugar', 'Adds familiar sweetness and helps reduce hardness.');
+  }
+  if (validation.warnings.some((warning) => /stabilizer|iciness/i.test(warning))) {
+    addIngredient('xanthan-gum', 0.25, 'tsp', 'Add ¼ tsp xanthan', 'A small stabilizer amount for a smoother lighter base.');
+    addIngredient('guar-gum', 0.25, 'tsp', 'Add ¼ tsp guar', 'An alternative stabilizer for smoother texture.');
+  }
+  if (validation.warnings.some((warning) => /ingredient roles|three/i.test(warning))) {
+    addIngredient('whey-vanilla', 25, 'g', 'Add vanilla whey', 'Adds 25 g of protein powder and another texture role.');
+    addIngredient('strawberries', 100, 'g', 'Add strawberries', 'Adds 100 g of fruit, flavor, and natural sugars.');
+  }
+  return options;
 }
 
 export function recommendProgram(recipe: Pick<Recipe, 'style' | 'nutrition' | 'ingredients'>, machineId: string): ProgramRecommendation {

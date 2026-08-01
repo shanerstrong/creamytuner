@@ -90,6 +90,17 @@ export function displayUnitOptions(unit: Unit, system: 'metric' | 'us', mode: Me
   return mode === 'kitchen' ? ['tsp', 'tbsp'] : ['tsp'];
 }
 
+/** A practical single-tap increment for each editable display unit. */
+export function displayAmountStep(displayUnit: DisplayUnit): number {
+  if (displayUnit === 'cup') return 0.25;
+  if (displayUnit === 'tbsp') return 1;
+  if (displayUnit === 'tsp') return 0.25;
+  if (displayUnit === 'fl-oz') return 0.5;
+  if (displayUnit === 'oz') return 0.25;
+  if (displayUnit === 'ml') return 10;
+  return 5;
+}
+
 export function editableAmount(amount: number, unit: Unit, displayUnit: DisplayUnit): number {
   if (displayUnit === 'cup') return amount / KITCHEN_ML_PER_CUP;
   if (displayUnit === 'tbsp') return amount / (unit === 'ml' ? KITCHEN_ML_PER_TBSP : 3);

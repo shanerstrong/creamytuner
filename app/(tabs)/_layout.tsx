@@ -1,26 +1,12 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
 import { Icon, type IconName } from '@/src/components/ui';
-import { palette } from '@/src/theme';
 
 export default function TabLayout() {
   return (
     <Tabs
+      tabBar={() => null}
       screenOptions={{
-        tabBarActiveTintColor: palette.pink,
-        tabBarInactiveTintColor: palette.textFaint,
         headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarStyle: {
-          backgroundColor: '#0C132A',
-          borderTopColor: palette.border,
-          height: 70,
-          paddingTop: 6,
-          paddingBottom: 8,
-        },
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '700' },
       }}>
       <Tabs.Screen name="home" options={tabOptions('Home', 'home-variant-outline', 'home-variant')} />
       <Tabs.Screen name="recipes" options={tabOptions('Recipes', 'silverware-fork-knife', 'silverware-fork-knife')} />
