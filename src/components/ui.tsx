@@ -31,7 +31,7 @@ export function Icon({ name, size = 22, color = palette.text }: { name: IconName
   return <MaterialCommunityIcons name={name} size={size} color={color} />;
 }
 
-export function Screen({ children, scroll = true, contentStyle, ...props }: ScrollViewProps & { children: ReactNode; scroll?: boolean; contentStyle?: StyleProp<ViewStyle> }) {
+export function Screen({ children, scroll = true, contentStyle, resetKey, ...props }: ScrollViewProps & { children: ReactNode; scroll?: boolean; contentStyle?: StyleProp<ViewStyle>; resetKey?: string | number }) {
   const pathname = usePathname();
   const scrollRef = useRef<ScrollView>(null);
   const content = <View style={[styles.screenInner, contentStyle]}>{children}</View>;
@@ -39,7 +39,7 @@ export function Screen({ children, scroll = true, contentStyle, ...props }: Scro
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
     if (Platform.OS === 'web' && typeof window !== 'undefined') window.scrollTo(0, 0);
-  }, [pathname]);
+  }, [pathname, resetKey]);
 
   return (
     <View style={styles.screen}>

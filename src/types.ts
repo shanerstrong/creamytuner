@@ -84,6 +84,22 @@ export const userSettingsSchema = z.object({
   darkMode: z.literal(true).default(true),
   notifications: z.boolean().default(false),
   ingredientLibraryView: z.enum(['list', 'grid']).default('list'),
+  tutorialMode: z.boolean().default(true),
+  firstPintCompleted: z.boolean().default(false),
+  guidedBuilderDraft: z.object({
+    step: z.number().int().min(0).max(6).default(0),
+    mode: z.enum(['guided', 'quick']).default('guided'),
+    name: z.string().default('My Creamy Creation'),
+    preferences: z.object({
+      style: recipeStyleSchema,
+      flavor: z.string().default('anything'),
+      craving: z.string().default(''),
+    }),
+    availableIds: z.array(z.string()).default([]),
+    items: z.array(recipeIngredientSchema).default([]),
+    recommendedIds: z.array(z.string()).default([]),
+    recommendedAmounts: z.record(z.string(), z.number().nonnegative()).default({}),
+  }).nullable().default(null),
 });
 
 export type IngredientCategory = z.infer<typeof ingredientCategorySchema>;
@@ -99,6 +115,8 @@ export type Ingredient = Omit<ParsedIngredient, IngredientMetadataKey> & Partial
 export type RecipeIngredient = z.infer<typeof recipeIngredientSchema>;
 export type Recipe = z.infer<typeof recipeSchema>;
 export type UserSettings = z.infer<typeof userSettingsSchema>;
+export type BuilderMode = 'guided' | 'quick';
+export type GuidedBuilderDraft = NonNullable<UserSettings['guidedBuilderDraft']>;
 
 export const builderPreferencesSchema = z.object({
   style: recipeStyleSchema,

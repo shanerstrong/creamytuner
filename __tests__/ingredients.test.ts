@@ -18,6 +18,24 @@ describe('ingredient catalog', () => {
   it('fills compatibility defaults for old ingredients and settings', () => {
     const old = ingredientSchema.parse({ id: 'old', name: 'Old item', category: 'base', subtitle: '', defaultUnit: 'ml', defaultAmount: 100, referenceAmount: 100, nutrition: { calories: 1, protein: 0, carbs: 0, sugar: 0, fat: 0 } });
     expect(old.tags).toEqual([]);
-    expect(userSettingsSchema.parse({}).ingredientLibraryView).toBe('list');
+    const settings = userSettingsSchema.parse({});
+    expect(settings.ingredientLibraryView).toBe('list');
+    expect(settings.tutorialMode).toBe(true);
+    expect(settings.firstPintCompleted).toBe(false);
+    expect(settings.guidedBuilderDraft).toBeNull();
+  });
+  it('validates resumable guided builder drafts without a database migration', () => {
+    const settings = userSettingsSchema.parse({ guidedBuilderDraft: {
+      step: 3,
+      mode: 'guided',
+      name: 'Draft pint',
+      preferences: { style: 'ice-cream', flavor: 'vanilla' },
+      availableIds: ['milk-2'],
+      items: [{ ingredientId: 'milk-2', amount: 240, unit: 'ml' }],
+      recommendedIds: ['milk-2'],
+      recommendedAmounts: { 'milk-2': 240 },
+    } });
+    expect(settings.guidedBuilderDraft?.step).toBe(3);
+    expect(settings.guidedBuilderDraft?.preferences.craving).toBe('');
   });
 });

@@ -17,6 +17,11 @@ export default function SettingsScreen() {
     <Screen>
       <AppHeader title="Settings" left={<IconButton icon="chevron-left" label="Go back" onPress={() => router.back()} />} />
       <View style={styles.list}>
+        <GlassCard style={styles.row}>
+          <Icon name="school-outline" color={palette.cyan} />
+          <View style={styles.copy}><Text style={styles.title}>Guided tutorial</Text><Text style={styles.subtitle}>Explain the pint-building process page by page</Text></View>
+          <Switch value={settings.tutorialMode} onValueChange={(tutorialMode) => updateSettings({ tutorialMode })} trackColor={{ false: palette.panelRaised, true: palette.cyan }} thumbColor={palette.white} accessibilityLabel="Toggle guided tutorial mode" />
+        </GlassCard>
         <SettingRow icon="ruler-square" title="Unit system" value={settings.units === 'metric' ? 'Metric (g, ml)' : 'US (oz, fl oz)'} onPress={() => updateSettings({ units: settings.units === 'metric' ? 'us' : 'metric' })} />
         <SettingRow icon="format-list-numbered" title="Measurement style" value={settings.measurementMode === 'kitchen' ? 'Kitchen-friendly (cups, tbsp, tsp)' : 'Exact amounts'} onPress={() => updateSettings({ measurementMode: settings.measurementMode === 'kitchen' ? 'exact' : 'kitchen' })} />
         <SettingRow icon="ice-cream" title="Default Machine" value={machine.shortName} onPress={() => router.push('/machines')} />
