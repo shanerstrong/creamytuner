@@ -1,4 +1,4 @@
-import { displayAmount, calculateNutrition, estimateVolumeMl } from '@/src/domain/nutrition';
+import { displayAmount, calculateNutrition, displayUnitOptions, editableAmount, estimateVolumeMl, parseDisplayAmount } from '@/src/domain/nutrition';
 import type { Ingredient } from '@/src/types';
 
 const ingredient: Ingredient = {
@@ -31,5 +31,11 @@ describe('nutrition engine', () => {
     expect(displayAmount(120, 'ml', 'us', 'kitchen')).toBe('½ cup');
     expect(displayAmount(7.5, 'ml', 'us', 'kitchen')).toBe('1 ½ tsp');
     expect(displayAmount(0.25, 'tsp', 'us', 'kitchen')).toBe('¼ tsp');
+  });
+
+  it('supports direct kitchen unit editing without changing canonical ingredient units', () => {
+    expect(displayUnitOptions('ml', 'us', 'kitchen')).toContain('tbsp');
+    expect(editableAmount(300, 'ml', 'cup')).toBeCloseTo(1.25);
+    expect(parseDisplayAmount(2, 'tbsp', 'tsp')).toEqual({ amount: 6, unit: 'tsp' });
   });
 });

@@ -144,13 +144,14 @@ export function NutritionStrip({ nutrition, compact = false }: { nutrition: Nutr
   const metrics = [
     ['Calories', `${Math.round(nutrition.calories)}`],
     ['Protein', `${Math.round(nutrition.protein)}g`],
+    ['Fiber', `${Math.round(nutrition.fiber)}g`],
     ['Sugar', `${Math.round(nutrition.sugar)}g`],
     ['Fat', `${Math.round(nutrition.fat)}g`],
   ];
   return (
-    <View style={[styles.nutritionStrip, compact && styles.nutritionCompact]}>
-      {metrics.map(([label, value]) => <View key={label} style={styles.nutritionMetric}><Text style={styles.metricLabel}>{label}</Text><Text style={styles.metricValue}>{value}</Text></View>)}
-    </View>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.nutritionStrip, compact && styles.nutritionCompact]}>
+      {metrics.map(([label, value]) => <View key={label} style={styles.nutritionMetric}><Text style={styles.metricLabel}>{label}</Text><Text style={styles.metricValue}>{value}</Text>{label === 'Fiber' ? <Text style={styles.metricNote}>{Math.round((nutrition.fiber / 28) * 100)}% DV</Text> : null}</View>)}
+    </ScrollView>
   );
 }
 
@@ -235,9 +236,10 @@ const styles = StyleSheet.create({
   sectionAction: { color: palette.pink, fontSize: 15, fontWeight: '700' },
   nutritionStrip: { flexDirection: 'row', borderRadius: radii.md, borderWidth: 1, borderColor: palette.border, backgroundColor: 'rgba(10,16,37,0.76)', paddingVertical: spacing.sm, paddingHorizontal: spacing.xs },
   nutritionCompact: { borderWidth: 0, backgroundColor: 'rgba(10,16,37,0.84)' },
-  nutritionMetric: { flex: 1, alignItems: 'center' },
+  nutritionMetric: { width: 82, alignItems: 'center' },
   metricLabel: { color: palette.textMuted, fontSize: 13, lineHeight: 17 },
   metricValue: { color: palette.text, fontSize: 17, fontWeight: '800', marginTop: 2 },
+  metricNote: { color: palette.textFaint, fontSize: 11, lineHeight: 14, marginTop: 1 },
   recipeCard: { width: '47.5%', aspectRatio: 0.83, borderRadius: radii.md, overflow: 'hidden', borderWidth: 1, borderColor: palette.border, backgroundColor: 'transparent' },
   recipeCardWide: { width: '100%', aspectRatio: 1.65 },
   recipeImage: { width: '100%', height: '100%', justifyContent: 'flex-end' },

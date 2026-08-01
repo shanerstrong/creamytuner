@@ -40,4 +40,12 @@ describe('guided recipe engine', () => {
     expect(recommendation.rationale).toContain('soy milk');
     expect(recommendation.missing.map((item) => item.id)).toContain('milk-2');
   });
+
+  it('offers multiple sweetener choices instead of forcing one', () => {
+    const recommendation = recommendGuidedRecipe({
+      preferences: { style: 'ice-cream', flavor: 'anything', craving: '' },
+      availableIngredientIds: [], ingredients: seededIngredients, machineId: 'nc501',
+    });
+    expect(recommendation.optional.map((item) => item.id)).toEqual(expect.arrayContaining(['allulose', 'sugar', 'brown-sugar']));
+  });
 });

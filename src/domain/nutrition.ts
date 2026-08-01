@@ -61,6 +61,25 @@ export function preferredDisplayUnit(unit: Unit, system: 'metric' | 'us', mode: 
   return system === 'us' ? 'oz' : 'g';
 }
 
+export function displayUnitOptions(unit: Unit, system: 'metric' | 'us', mode: MeasurementMode): DisplayUnit[] {
+  if (unit === 'ml') {
+    if (system === 'us' && mode === 'kitchen') return ['cup', 'tbsp', 'tsp', 'fl-oz', 'ml'];
+    if (system === 'us') return ['fl-oz', 'ml'];
+    return ['ml'];
+  }
+  if (unit === 'g') return system === 'us' ? ['oz', 'g'] : ['g'];
+  return mode === 'kitchen' ? ['tsp', 'tbsp'] : ['tsp'];
+}
+
+export function editableAmount(amount: number, unit: Unit, displayUnit: DisplayUnit): number {
+  if (displayUnit === 'cup') return amount / 240;
+  if (displayUnit === 'tbsp') return amount / (unit === 'ml' ? 14.7868 : 3);
+  if (displayUnit === 'tsp') return amount / (unit === 'ml' ? 4.92892 : 1);
+  if (displayUnit === 'fl-oz') return amount / 29.5735;
+  if (displayUnit === 'oz') return amount / 28.3495;
+  return amount;
+}
+
 export function displayAmount(amount: number, unit: Unit, system: 'metric' | 'us', mode: MeasurementMode = 'exact'): string {
   const displayUnit = mode === 'kitchen' && system === 'us' && unit === 'ml'
     ? amount >= 120 ? 'cup' : amount >= 15 ? 'tbsp' : 'tsp'
@@ -74,9 +93,9 @@ export function displayAmount(amount: number, unit: Unit, system: 'metric' | 'us
   return `${value} ${displayUnit}`;
 }
 
-export function parseDisplayAmount(value: number, displayUnit: DisplayUnit): { amount: number; unit: Unit } {
+export function parseDisplayAmount(value: number, displayUnit: DisplayUnit, canonicalUnit?: Unit): { amount: number; unit: Unit } {
   if (displayUnit === 'cup') return { amount: value * 240, unit: 'ml' };
-  if (displayUnit === 'tbsp') return { amount: value * 15, unit: 'ml' };
+  if (displayUnit === 'tbsp') return canonicalUnit === 'tsp' ? { amount: value * 3, unit: 'tsp' } : { amount: value * 15, unit: 'ml' };
   if (displayUnit === 'tsp') return { amount: value, unit: 'tsp' };
   if (displayUnit === 'fl-oz') return { amount: value * 29.5735, unit: 'ml' };
   if (displayUnit === 'oz') return { amount: value * 28.3495, unit: 'g' };

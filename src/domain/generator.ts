@@ -103,7 +103,7 @@ export function recommendGuidedRecipe(input: {
   const chosen = items.map((item) => input.ingredients.find((ingredient) => ingredient.id === item.ingredientId)).filter((ingredient): ingredient is Ingredient => Boolean(ingredient));
   const missing = chosen.filter((ingredient) => !availableIds.has(ingredient.id));
   const available = chosen.filter((ingredient) => availableIds.has(ingredient.id));
-  const optional = input.ingredients.filter((ingredient) => ['fruit', 'flavoring', 'mix-in'].includes(ingredient.category) && !chosen.some((item) => item.id === ingredient.id)).slice(0, 4);
+  const optional = input.ingredients.filter((ingredient) => ['sweetener', 'fruit', 'flavoring', 'mix-in'].includes(ingredient.category) && !chosen.some((item) => item.id === ingredient.id)).slice(0, 6);
   if (!chosen.some((ingredient) => ingredient.category === 'base')) warnings.push('Choose at least one milk, yogurt, plant base, or fruit before saving.');
   if (estimateVolumeMl(items) > machineById(input.machineId).capacityMl * 0.92) warnings.push('This suggestion is above the safe fill target for the selected machine.');
   return {
