@@ -1,5 +1,6 @@
 import { seededIngredients } from '@/src/data/ingredients';
-import { generateRecipe, getRecipeFixOptions, recommendGuidedRecipe, recommendProgram, validateRecipe } from '@/src/domain/generator';
+import { generateRecipe, getPantrySubstitutionProposals, getRecipeFixOptions, recommendBeginnerRecipe, recommendGuidedRecipe, recommendProgram, validateRecipe } from '@/src/domain/generator';
+import type { BeginnerFlavor, RecipeGoal, TexturePreference } from '@/src/types';
 
 describe('guided recipe engine', () => {
   it('blocks recipes that exceed the selected machine fill target', () => {
@@ -63,5 +64,35 @@ describe('guided recipe engine', () => {
     const fix = getRecipeFixOptions(items, seededIngredients, 'classic', validation).find((option) => option.id === 'fit-container');
     expect(fix).toBeTruthy();
     expect(validateRecipe(fix!.nextItems, seededIngredients, 'classic').estimatedVolumeMl).toBeLessThan(validation.estimatedVolumeMl);
+  });
+
+  it('builds a complete machine-compatible recipe for every beginner answer combination', () => {
+    const textures: TexturePreference[] = ['creamy', 'light', 'fruit-forward', 'thick'];
+    const flavors: BeginnerFlavor[] = ['strawberry', 'chocolate', 'vanilla', 'mint', 'berry', 'surprise-me'];
+    const goals: RecipeGoal[] = ['high-protein', 'classic', 'lower-calorie', 'dairy-free'];
+    for (const texture of textures) for (const flavor of flavors) for (const goal of goals) {
+      const result = recommendBeginnerRecipe({ answers: { texture, flavor, goal }, ingredients: seededIngredients, machineId: 'nc501' });
+      expect(result.items.length).toBeGreaterThanOrEqual(4);
+      expect(validateRecipe(result.items, seededIngredients, 'nc501').errors).toHaveLength(0);
+    }
+  });
+
+  it('keeps every dairy-free recommendation free of dairy ingredients', () => {
+    const dairyIds = new Set(['milk-2', 'skim-milk', 'fairlife-2', 'fairlife-fat-free', 'fairlife-chocolate', 'whey-vanilla', 'whey-chocolate', 'casein-vanilla', 'cottage-cheese-low-fat', 'cream-cheese', 'cookie-pieces']);
+    const flavors: BeginnerFlavor[] = ['strawberry', 'chocolate', 'vanilla', 'mint', 'berry', 'surprise-me'];
+    for (const flavor of flavors) {
+      const result = recommendBeginnerRecipe({ answers: { texture: 'creamy', flavor, goal: 'dairy-free' }, ingredients: seededIngredients, machineId: 'nc501' });
+      expect(result.items.some((item) => dairyIds.has(item.ingredientId))).toBe(false);
+    }
+  });
+
+  it('proposes pantry substitutions without changing the current recipe', () => {
+    const items = [{ ingredientId: 'milk-2', amount: 300, unit: 'ml' as const }, { ingredientId: 'whey-vanilla', amount: 25, unit: 'g' as const }];
+    const original = JSON.parse(JSON.stringify(items));
+    const proposals = getPantrySubstitutionProposals(items, ['soy-milk', 'pea-protein'], seededIngredients);
+    expect(proposals.map((proposal) => proposal.replacement.ingredientId)).toEqual(expect.arrayContaining(['soy-milk', 'pea-protein']));
+    expect(new Set(proposals.map((proposal) => proposal.replacement.ingredientId)).size).toBe(proposals.length);
+    expect(proposals.every((proposal) => proposal.original.unit === proposal.replacement.unit)).toBe(true);
+    expect(items).toEqual(original);
   });
 });

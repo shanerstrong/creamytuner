@@ -1,6 +1,6 @@
 import { machineById, programs } from '@/src/data/machines';
 import { calculateNutrition, estimateVolumeMl } from '@/src/domain/nutrition';
-import type { BuilderPreferences, GuidedRecommendation, Ingredient, ProgramRecommendation, Recipe, RecipeIngredient, RecipeStyle, RecipeValidation } from '@/src/types';
+import type { BeginnerBuilderAnswers, BuilderPreferences, GuidedRecommendation, Ingredient, ProgramRecommendation, Recipe, RecipeIngredient, RecipeStyle, RecipeValidation, SubstitutionProposal } from '@/src/types';
 
 export type RecipeFixOption = {
   id: string;
@@ -55,8 +55,8 @@ export function getRecipeFixOptions(items: RecipeIngredient[], ingredients: Ingr
     addIngredient('almond-milk', 300, 'ml', 'Add almond milk', 'Adds 300 ml of a lighter plant base.');
   }
   if (validation.warnings.some((warning) => /low sugar|sweetener/i.test(warning))) {
-    addIngredient('allulose', 15, 'g', 'Add 15 g allulose', 'Helps soften the frozen texture with little added energy.');
-    addIngredient('sugar', 20, 'g', 'Add 20 g sugar', 'Adds familiar sweetness and helps reduce hardness.');
+    addIngredient('allulose', 15, 'g', 'Add a softening ingredient', 'Add 15 g allulose to help the pint freeze less hard.');
+    addIngredient('sugar', 20, 'g', 'Add sugar for a softer texture', 'Add 20 g sugar for familiar sweetness and a softer freeze.');
   }
   if (validation.warnings.some((warning) => /stabilizer|iciness/i.test(warning))) {
     addIngredient('xanthan-gum', 0.25, 'tsp', 'Add ¼ tsp xanthan', 'A small stabilizer amount for a smoother lighter base.');
@@ -132,6 +132,121 @@ const thickBaseItems: RecipeIngredient[] = [
   { ingredientId: 'salt', amount: 0.125, unit: 'tsp' },
   { ingredientId: 'xanthan-gum', amount: 0.25, unit: 'tsp' },
 ];
+
+export type BeginnerRecommendation = {
+  name: string;
+  style: RecipeStyle;
+  items: RecipeIngredient[];
+  expectedTexture: string;
+  rationale: string;
+};
+
+const answerLabels = {
+  'high-protein': 'High-Protein',
+  classic: 'Classic',
+  'lower-calorie': 'Lighter',
+  'dairy-free': 'Dairy-Free',
+} as const;
+
+export function recommendBeginnerRecipe(input: { answers: BeginnerBuilderAnswers; ingredients: Ingredient[]; machineId: string }): BeginnerRecommendation {
+  const { answers } = input;
+  let items: RecipeIngredient[] = answers.goal === 'high-protein' ? thickBaseItems.map((item) => ({ ...item }))
+    : answers.goal === 'classic' ? [
+      { ingredientId: 'milk-2', amount: 360, unit: 'ml' }, { ingredientId: 'cream-cheese', amount: 30, unit: 'g' },
+      { ingredientId: 'sugar', amount: 20, unit: 'g' }, { ingredientId: 'xanthan-gum', amount: 0.25, unit: 'tsp' },
+    ]
+      : answers.goal === 'lower-calorie' ? [
+        { ingredientId: 'almond-milk', amount: 350, unit: 'ml' }, { ingredientId: 'whey-vanilla', amount: 25, unit: 'g' },
+        { ingredientId: 'cottage-cheese-low-fat', amount: 50, unit: 'g' }, { ingredientId: 'allulose', amount: 15, unit: 'g' },
+        { ingredientId: 'xanthan-gum', amount: 0.25, unit: 'tsp' },
+      ] : [
+        { ingredientId: 'soy-milk', amount: 350, unit: 'ml' }, { ingredientId: 'pea-protein', amount: 25, unit: 'g' },
+        { ingredientId: 'allulose', amount: 15, unit: 'g' }, { ingredientId: 'guar-gum', amount: 0.25, unit: 'tsp' },
+      ];
+
+  if (answers.texture === 'light') items = items.filter((item) => item.ingredientId !== 'cream-cheese');
+  if (answers.texture === 'thick' && answers.goal !== 'dairy-free' && !items.some((item) => item.ingredientId === 'cottage-cheese-low-fat')) {
+    items.push({ ingredientId: 'cottage-cheese-low-fat', amount: 50, unit: 'g' });
+  }
+  if (answers.texture === 'fruit-forward') {
+    items = items.map((item) => item.unit === 'ml' ? { ...item, amount: Math.max(150, item.amount - 100) } : item);
+  }
+
+  const add = (ingredientId: string, amount: number, unit: RecipeIngredient['unit']) => {
+    if (!items.some((item) => item.ingredientId === ingredientId)) items.push({ ingredientId, amount, unit });
+  };
+  if (answers.flavor === 'strawberry') add('strawberries', answers.texture === 'fruit-forward' ? 150 : 100, 'g');
+  if (answers.flavor === 'chocolate') {
+    if (answers.goal !== 'dairy-free') items = items.map((item) => item.ingredientId === 'whey-vanilla' ? { ...item, ingredientId: 'whey-chocolate' } : item);
+    add('cocoa', 10, 'g');
+  }
+  if (answers.flavor === 'vanilla') add('vanilla', 0.5, 'tsp');
+  if (answers.flavor === 'mint') add('peppermint', 0.25, 'tsp');
+  if (answers.flavor === 'berry') add('blueberries', answers.texture === 'fruit-forward' ? 150 : 100, 'g');
+  if (answers.flavor === 'surprise-me') {
+    add('vanilla', 0.5, 'tsp');
+    if (answers.goal !== 'dairy-free') add('cookie-pieces', 20, 'g');
+  }
+
+  const machine = machineById(input.machineId);
+  const estimated = estimateVolumeMl(items);
+  if (estimated > machine.capacityMl * 0.88) {
+    const scale = (machine.capacityMl * 0.88) / estimated;
+    items = items.map((item) => item.unit === 'ml' ? { ...item, amount: Math.max(1, Number((item.amount * scale).toFixed(1))) } : item);
+  }
+  items = items.filter((item) => input.ingredients.some((ingredient) => ingredient.id === item.ingredientId));
+
+  const flavorName = answers.flavor === 'surprise-me' ? 'Cookies & Vanilla' : `${answers.flavor[0].toUpperCase()}${answers.flavor.slice(1)}`;
+  const style: RecipeStyle = answers.texture === 'fruit-forward' ? 'sorbet' : answers.texture === 'light' || answers.goal === 'lower-calorie' ? 'lite-ice-cream' : answers.texture === 'thick' ? 'smoothie-bowl' : 'ice-cream';
+  const expectedTexture = answers.texture === 'creamy' ? 'Creamy and scoopable' : answers.texture === 'light' ? 'Light and refreshing' : answers.texture === 'fruit-forward' ? 'Fruit-forward and bright' : 'Thick and spoonable';
+  return {
+    name: `${flavorName} ${answerLabels[answers.goal]} Pint`,
+    style,
+    items,
+    expectedTexture,
+    rationale: answers.goal === 'dairy-free'
+      ? 'Soy milk, plant protein, sweetener, and guar create body without dairy.'
+      : answers.goal === 'high-protein'
+        ? 'Protein, blended dairy, and a small amount of stabilizer build a dense base.'
+        : answers.goal === 'lower-calorie'
+          ? 'A lighter milk base, lean protein, and allulose help balance texture and energy.'
+          : 'Milk, cream cheese, sugar, and stabilizer create a familiar classic base.',
+  };
+}
+
+export function getPantrySubstitutionProposals(items: RecipeIngredient[], pantryIds: string[], ingredients: Ingredient[]): SubstitutionProposal[] {
+  const pantry = ingredients.filter((ingredient) => pantryIds.includes(ingredient.id));
+  const proposals: SubstitutionProposal[] = [];
+  const usedReplacementIds = new Set<string>();
+  for (const original of items) {
+    if (pantryIds.includes(original.ingredientId)) continue;
+    const originalIngredient = ingredients.find((ingredient) => ingredient.id === original.ingredientId);
+    if (!originalIngredient) continue;
+    const replacementIngredient = pantry.find((ingredient) => ingredient.category === originalIngredient.category
+      && ingredient.defaultUnit === original.unit
+      && !usedReplacementIds.has(ingredient.id)
+      && !items.some((item) => item.ingredientId === ingredient.id));
+    if (!replacementIngredient) continue;
+    usedReplacementIds.add(replacementIngredient.id);
+    const replacement: RecipeIngredient = {
+      ingredientId: replacementIngredient.id,
+      amount: replacementIngredient.defaultUnit === original.unit ? original.amount : replacementIngredient.defaultAmount,
+      unit: replacementIngredient.defaultUnit,
+    };
+    const before = calculateNutrition([original], ingredients);
+    const after = calculateNutrition([replacement], ingredients);
+    proposals.push({
+      original,
+      replacement,
+      rationale: `Use ${replacementIngredient.name}, which you marked as available, instead of ${originalIngredient.name}.`,
+      calorieDelta: Number((after.calories - before.calories).toFixed(1)),
+      proteinDelta: Number((after.protein - before.protein).toFixed(1)),
+      fillDeltaMl: estimateVolumeMl([replacement]) - estimateVolumeMl([original]),
+    });
+    if (proposals.length === 3) break;
+  }
+  return proposals;
+}
 
 export function recommendGuidedRecipe(input: {
   preferences: BuilderPreferences;

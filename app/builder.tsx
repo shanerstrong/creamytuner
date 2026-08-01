@@ -1,225 +1,138 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AdjustStep, GoalStep, PantryStep, RecommendationStep, ReviewStep } from '@/src/components/builder/steps';
-import { GuidedGoalStep, StartingPointStep, TutorialExplainer, TutorialIntroStep } from '@/src/components/builder/tutorial-steps';
-import { AppHeader, GradientButton, Icon, IconButton, LoadingScreen, Screen, textStyles } from '@/src/components/ui';
-import { getRecipeFixOptions, generateRecipe, recommendGuidedRecipe, recommendProgram, validateRecipe, type RecipeFixOption } from '@/src/domain/generator';
+import { CollapsedAdjustStep, CompactProgress, BuilderQuestionStep, OptionalPantry, RecommendationResult } from '@/src/components/builder/simple-steps';
+import { ReviewStep } from '@/src/components/builder/steps';
+import { AppHeader, GradientButton, Icon, IconButton, LoadingScreen, Screen } from '@/src/components/ui';
 import { calculateNutrition } from '@/src/domain/nutrition';
+import { generateRecipe, getPantrySubstitutionProposals, getRecipeFixOptions, recommendBeginnerRecipe, recommendProgram, validateRecipe, type RecipeFixOption } from '@/src/domain/generator';
 import { useApp } from '@/src/providers/app-provider';
-import { palette, radii, spacing } from '@/src/theme';
-import type { BuilderMode, BuilderPreferences, GuidedBuilderDraft, Recipe, RecipeIngredient } from '@/src/types';
+import { palette, spacing } from '@/src/theme';
+import type { BeginnerBuilderAnswers, BeginnerBuilderStage, GuidedBuilderDraft, Recipe, RecipeIngredient } from '@/src/types';
 
-type BuilderPage = 'intro' | 'goal' | 'starting' | 'pantry' | 'recommendation' | 'adjust' | 'review';
+const stageOrder: BeginnerBuilderStage[] = ['question-texture', 'question-flavor', 'question-goal', 'recommendation', 'customize', 'review'];
+const questionStages = new Set<BeginnerBuilderStage>(['question-texture', 'question-flavor', 'question-goal']);
 
-const guidedFlow: BuilderPage[] = ['intro', 'goal', 'starting', 'pantry', 'recommendation', 'adjust', 'review'];
-const quickFlow: BuilderPage[] = ['goal', 'pantry', 'recommendation', 'adjust', 'review'];
-const pageLabels: Record<BuilderPage, string> = {
-  intro: 'How it works', goal: 'Your goal', starting: 'Starting point', pantry: 'Your kitchen', recommendation: 'Base recipe', adjust: 'Fine-tune', review: 'Review',
-};
-
-export default function RecipeBuilderScreen() {
-  const params = useLocalSearchParams<{ recipeId?: string; mode?: string; resume?: string }>();
-  const { ready, ingredients, recipes, saveRecipe, settings, updateSettings } = useApp();
+export default function BuilderScreen() {
+  const params = useLocalSearchParams<{ recipeId?: string; resume?: string; advanced?: string }>();
+  const { ready, ingredients, recipes, settings, updateSettings, saveRecipe } = useApp();
   const source = recipes.find((recipe) => recipe.id === params.recipeId);
   const initialized = useRef(false);
-  const lastSavedDraft = useRef('');
-  const previousStep = useRef(0);
+  const lastDraft = useRef('');
+  const previousIndex = useRef(0);
   const slide = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(1)).current;
-  const [mode, setMode] = useState<BuilderMode>('guided');
-  const [step, setStep] = useState(0);
+  const [stage, setStage] = useState<BeginnerBuilderStage>('question-texture');
+  const [answers, setAnswers] = useState<BeginnerBuilderAnswers>({ texture: 'creamy', flavor: 'strawberry', goal: 'high-protein' });
   const [name, setName] = useState('My Creamy Creation');
-  const [preferences, setPreferences] = useState<BuilderPreferences>({ style: 'ice-cream', flavor: 'anything', craving: '' });
-  const [availableIds, setAvailableIds] = useState<string[]>([]);
   const [items, setItems] = useState<RecipeIngredient[]>([]);
-  const [recommendedIds, setRecommendedIds] = useState<string[]>([]);
   const [recommendedAmounts, setRecommendedAmounts] = useState<Record<string, number>>({});
+  const [pantryIds, setPantryIds] = useState<string[]>([]);
+  const [pantryOpen, setPantryOpen] = useState(false);
   const [adjustmentIssue, setAdjustmentIssue] = useState('');
   const [appliedFix, setAppliedFix] = useState('');
 
-  const flow = mode === 'guided' ? guidedFlow : quickFlow;
-  const safeStep = Math.min(step, flow.length - 1);
-  const page = flow[safeStep];
+  const recommendation = useMemo(() => recommendBeginnerRecipe({ answers, ingredients, machineId: settings.machineId }), [answers, ingredients, settings.machineId]);
+  const nutrition = useMemo(() => calculateNutrition(items, ingredients), [ingredients, items]);
+  const rawValidation = useMemo(() => validateRecipe(items, ingredients, settings.machineId), [ingredients, items, settings.machineId]);
+  const validation = useMemo(() => ({
+    ...rawValidation,
+    errors: rawValidation.errors.map((error) => /safe fill target|capacity|exceed/i.test(error) ? 'This may exceed your container’s safe fill line.' : error),
+    warnings: rawValidation.warnings.map((warning) => /low sugar|freeze hard/i.test(warning) ? 'This may freeze too hard without fruit or a softening sweetener.' : /stabilizer|iciness/i.test(warning) ? 'This may turn out icier without a small texture helper.' : warning),
+  }), [rawValidation]);
+  const recipeStyle = source?.style ?? recommendation.style;
+  const program = useMemo(() => recommendProgram({ style: recipeStyle, nutrition, ingredients: items }, settings.machineId), [items, nutrition, recipeStyle, settings.machineId]);
+  const fixOptions = useMemo(() => getRecipeFixOptions(items, ingredients, settings.machineId, rawValidation), [ingredients, items, rawValidation, settings.machineId]);
+  const proposals = useMemo(() => getPantrySubstitutionProposals(items, pantryIds, ingredients), [ingredients, items, pantryIds]);
+  const highlightedIds = useMemo(() => {
+    if (!adjustmentIssue) return new Set<string>();
+    return new Set(items.filter((item) => { const ingredient = ingredients.find((candidate) => candidate.id === item.ingredientId); if (!ingredient) return false; return /fill|container/i.test(adjustmentIssue) ? ingredient.category === 'base' || item.amount >= 100 : /hard|sweet/i.test(adjustmentIssue) ? ingredient.category === 'sweetener' : ingredient.category === 'stabilizer'; }).map((item) => item.ingredientId));
+  }, [adjustmentIssue, ingredients, items]);
 
   useEffect(() => {
     if (!ready || initialized.current) return;
     if (source) {
-      setMode('quick');
-      setName(source.name);
-      setPreferences((current) => ({ ...current, style: source.style }));
-      setItems(source.ingredients);
-      setRecommendedAmounts(Object.fromEntries(source.ingredients.map((item) => [item.ingredientId, ingredients.find((ingredient) => ingredient.id === item.ingredientId)?.defaultAmount ?? item.amount])));
-      setStep(quickFlow.indexOf('adjust'));
+      setStage('customize'); setName(source.name); setItems(source.ingredients);
+      setRecommendedAmounts(Object.fromEntries(source.ingredients.map((item) => [item.ingredientId, item.amount])));
     } else if (params.resume === '1' && settings.guidedBuilderDraft) {
       const draft = settings.guidedBuilderDraft;
-      setMode(draft.mode);
-      setStep(Math.min(draft.step, (draft.mode === 'guided' ? guidedFlow : quickFlow).length - 1));
-      setName(draft.name);
-      setPreferences(draft.preferences);
-      setAvailableIds(draft.availableIds);
-      setItems(draft.items);
-      setRecommendedIds(draft.recommendedIds);
-      setRecommendedAmounts(draft.recommendedAmounts);
-      lastSavedDraft.current = JSON.stringify(draft);
-    } else {
-      const initialMode: BuilderMode = params.mode === 'quick' ? 'quick' : params.mode === 'guided' ? 'guided' : settings.tutorialMode ? 'guided' : 'quick';
-      setMode(initialMode);
+      setStage(draft.stage); setName(draft.name); setAnswers(draft.answers); setPantryIds(draft.pantryIds); setItems(draft.items); setRecommendedAmounts(draft.recommendedAmounts);
+      lastDraft.current = JSON.stringify(draft);
+    } else if (params.advanced === '1') {
+      const template = recipes.find((recipe) => recipe.isTemplate);
+      if (template) { setName(template.name); setItems(template.ingredients); setRecommendedAmounts(Object.fromEntries(template.ingredients.map((item) => [item.ingredientId, item.amount]))); }
+      setStage('customize');
     }
     initialized.current = true;
-  }, [ingredients, params.mode, params.resume, ready, settings.guidedBuilderDraft, settings.tutorialMode, source]);
+  }, [params.advanced, params.resume, ready, recipes, settings.guidedBuilderDraft, source]);
 
   useEffect(() => {
     if (!ready || !initialized.current || source) return;
-    const draft: GuidedBuilderDraft = { step: safeStep, mode, name, preferences, availableIds, items, recommendedIds, recommendedAmounts };
+    const draft: GuidedBuilderDraft = { version: 2, stage, name, answers, pantryIds, items, recommendedAmounts };
     const serialized = JSON.stringify(draft);
-    if (serialized === lastSavedDraft.current) return;
-    const timer = setTimeout(() => {
-      lastSavedDraft.current = serialized;
-      void updateSettings({ guidedBuilderDraft: draft });
-    }, 350);
+    if (serialized === lastDraft.current) return;
+    const timer = setTimeout(() => { lastDraft.current = serialized; void updateSettings({ guidedBuilderDraft: draft }); }, 300);
     return () => clearTimeout(timer);
-  }, [availableIds, items, mode, name, preferences, ready, recommendedAmounts, recommendedIds, safeStep, source, updateSettings]);
+  }, [answers, items, name, pantryIds, ready, recommendedAmounts, source, stage, updateSettings]);
 
   useEffect(() => {
-    const direction = safeStep >= previousStep.current ? 1 : -1;
-    previousStep.current = safeStep;
-    slide.setValue(direction * 32);
-    fade.setValue(0.65);
-    Animated.parallel([
-      Animated.timing(slide, { toValue: 0, duration: 240, useNativeDriver: true }),
-      Animated.timing(fade, { toValue: 1, duration: 220, useNativeDriver: true }),
-    ]).start();
-  }, [fade, safeStep, slide]);
+    const index = stageOrder.indexOf(stage);
+    const direction = index >= previousIndex.current ? 1 : -1;
+    previousIndex.current = index;
+    slide.setValue(direction * 28); fade.setValue(0.7);
+    Animated.parallel([Animated.timing(slide, { toValue: 0, duration: 220, useNativeDriver: true }), Animated.timing(fade, { toValue: 1, duration: 200, useNativeDriver: true })]).start();
+  }, [fade, slide, stage]);
 
-  const recommendation = useMemo(() => recommendGuidedRecipe({ preferences, availableIngredientIds: availableIds, ingredients, machineId: settings.machineId }), [availableIds, ingredients, preferences, settings.machineId]);
-  useEffect(() => {
-    if (page !== 'recommendation') return;
-    setRecommendedIds(items.length ? items.map((item) => item.ingredientId) : recommendation.suggestedItems.map((item) => item.ingredientId));
-  }, [items, page, recommendation.suggestedItems]);
-  const selectedIds = useMemo(() => new Set(items.map((item) => item.ingredientId)), [items]);
-  const nutrition = useMemo(() => calculateNutrition(items, ingredients), [ingredients, items]);
-  const validation = useMemo(() => validateRecipe(items, ingredients, settings.machineId), [ingredients, items, settings.machineId]);
-  const program = useMemo(() => recommendProgram({ style: preferences.style, nutrition, ingredients: items }, settings.machineId), [items, nutrition, preferences.style, settings.machineId]);
-  const fixOptions = useMemo(() => getRecipeFixOptions(items, ingredients, settings.machineId, validation), [ingredients, items, settings.machineId, validation]);
-  const highlightedIds = useMemo(() => {
-    if (!adjustmentIssue) return new Set<string>();
-    const relevant = items.filter((item) => {
-      const ingredient = ingredients.find((candidate) => candidate.id === item.ingredientId);
-      if (!ingredient) return false;
-      if (/fill|capacity|volume|line/i.test(adjustmentIssue)) return ingredient.category === 'base' || item.amount >= 100;
-      if (/sweet/i.test(adjustmentIssue)) return ingredient.category === 'sweetener';
-      if (/stabil|gum|texture/i.test(adjustmentIssue)) return ingredient.category === 'stabilizer';
-      return ingredient.category === 'base' || ingredient.category === 'protein';
-    });
-    return new Set(relevant.map((item) => item.ingredientId));
-  }, [adjustmentIssue, ingredients, items]);
-
-  const goToPage = (target: BuilderPage) => {
-    const next = flow.indexOf(target);
-    if (next >= 0) setStep(next);
+  const buildRecommendation = () => {
+    setName(recommendation.name); setItems(recommendation.items); setRecommendedAmounts(Object.fromEntries(recommendation.items.map((item) => [item.ingredientId, item.amount]))); setStage('recommendation');
   };
-  const move = (direction: -1 | 1) => setStep((current) => Math.max(0, Math.min(flow.length - 1, current + direction)));
-  const switchMode = (nextMode: BuilderMode) => {
-    const currentPage = page;
-    const nextFlow = nextMode === 'guided' ? guidedFlow : quickFlow;
-    setMode(nextMode);
-    setStep(Math.max(0, nextFlow.indexOf(currentPage)));
-    void updateSettings({ tutorialMode: nextMode === 'guided' });
+  const applyProposals = () => {
+    const replacements = new Map(proposals.map((proposal) => [proposal.original.ingredientId, proposal.replacement]));
+    setItems((current) => current.map((item) => replacements.get(item.ingredientId) ?? item));
+    setPantryOpen(false);
   };
-  const chooseGuidedStart = () => {
-    setItems([]);
-    setRecommendedAmounts({});
-    goToPage('pantry');
-  };
-  const applyTemplate = (continueThroughGuide = false) => {
-    const template = recipes.find((recipe) => recipe.isTemplate);
-    if (!template) return;
-    setName(template.name);
-    setPreferences((current) => ({ ...current, style: template.style }));
-    setItems(template.ingredients);
-    setRecommendedAmounts(Object.fromEntries(template.ingredients.map((item) => [item.ingredientId, item.amount])));
-    setAdjustmentIssue('');
-    setAppliedFix('');
-    goToPage(continueThroughGuide ? 'pantry' : 'adjust');
-  };
-  const applyRecommendation = () => {
-    const selected = new Set(recommendedIds);
-    const candidates = [...items, ...recommendation.suggestedItems, ...recommendation.optional.map((ingredient) => ({ ingredientId: ingredient.id, amount: ingredient.defaultAmount, unit: ingredient.defaultUnit }))];
-    const unique = new Map(candidates.map((item) => [item.ingredientId, item]));
-    const nextItems = [...unique.values()].filter((item) => selected.has(item.ingredientId));
-    setItems(nextItems);
-    setRecommendedAmounts((current) => ({ ...current, ...Object.fromEntries(nextItems.map((item) => [item.ingredientId, current[item.ingredientId] ?? item.amount])) }));
-    setAdjustmentIssue('');
-    setAppliedFix('');
-    goToPage('adjust');
-  };
-  const applyFix = (option: RecipeFixOption) => {
-    setItems(option.nextItems);
-    setRecommendedAmounts((current) => ({ ...current, ...Object.fromEntries(option.nextItems.filter((item) => !current[item.ingredientId]).map((item) => [item.ingredientId, item.amount])) }));
-    setAppliedFix(`${option.label} applied. Review the updated amounts below.`);
-  };
+  const applyFix = (option: RecipeFixOption) => { setItems(option.nextItems); setAppliedFix(`${option.label} applied. Review the updated recipe below.`); };
   const submit = async () => {
-    const imageKey: Recipe['imageKey'] = selectedIds.has('cocoa') ? 'chocolate' : selectedIds.has('peppermint') ? 'mint' : selectedIds.has('cookie-pieces') ? 'cookies' : 'strawberry';
-    const recipe = generateRecipe({ name, style: preferences.style, items, ingredients, existingId: source?.id, imageKey: source?.imageKey ?? imageKey, favorite: source?.favorite });
+    const selected = new Set(items.map((item) => item.ingredientId));
+    const imageKey: Recipe['imageKey'] = selected.has('cocoa') ? 'chocolate' : selected.has('peppermint') ? 'mint' : selected.has('cookie-pieces') ? 'cookies' : 'strawberry';
+    const recipe = generateRecipe({ name, style: recipeStyle, items, ingredients, existingId: source?.id, imageKey: source?.imageKey ?? imageKey, favorite: source?.favorite });
     if (source) recipe.createdAt = source.createdAt;
-    await saveRecipe(recipe);
-    await updateSettings({ firstPintCompleted: true, guidedBuilderDraft: null });
-    router.replace(`/recipe/${recipe.id}`);
+    await saveRecipe(recipe); await updateSettings({ firstPintCompleted: true, guidedBuilderDraft: null }); router.replace(`/recipe/${recipe.id}`);
   };
+  const back = () => {
+    if (stage === 'question-texture') return router.back();
+    if (stage === 'question-flavor') return setStage('question-texture');
+    if (stage === 'question-goal') return setStage('question-flavor');
+    if (stage === 'recommendation') return setStage('question-goal');
+    if (stage === 'customize' && (source || params.advanced === '1')) return router.back();
+    if (stage === 'customize') return setStage('recommendation');
+    setStage('customize');
+  };
+  const continueQuestion = () => stage === 'question-texture' ? setStage('question-flavor') : stage === 'question-flavor' ? setStage('question-goal') : buildRecommendation();
   if (!ready) return <LoadingScreen />;
 
-  const continueAction = () => {
-    if (page === 'recommendation') applyRecommendation();
-    else if (page === 'review') void submit();
-    else move(1);
-  };
-  const continueTitle = page === 'intro' ? 'Start the tutorial' : page === 'recommendation' ? 'Use selected ingredients' : page === 'adjust' ? 'Review my pint' : page === 'review' ? source ? 'Save changes' : 'Save recipe' : 'Continue';
-  const continueDisabled = (page === 'recommendation' && recommendedIds.length === 0) || (page === 'adjust' && items.length === 0) || (page === 'review' && (validation.errors.length > 0 || items.length === 0));
+  const footer = questionStages.has(stage) || stage === 'customize' || stage === 'review' ? <View style={styles.footer}><Pressable onPress={back} style={styles.backButton} accessibilityRole="button"><Icon name="arrow-left" color={palette.textMuted} /><Text style={styles.backText}>Back</Text></Pressable><GradientButton title={questionStages.has(stage) ? stage === 'question-goal' ? 'Build my recipe' : 'Continue' : stage === 'customize' ? 'Review my pint' : source ? 'Save changes' : 'Save recipe'} icon="arrow-right" disabled={((stage === 'customize' || stage === 'review') && items.length === 0) || (stage === 'review' && validation.errors.length > 0)} onPress={() => questionStages.has(stage) ? continueQuestion() : stage === 'customize' ? setStage('review') : void submit()} /></View> : null;
 
-  return (
-    <Screen resetKey={page}>
-      <AppHeader title={source ? 'Edit recipe' : mode === 'guided' ? 'Guided pint' : 'Quick build'} subtitle={`${safeStep + 1} of ${flow.length} · ${pageLabels[page]}`} left={<IconButton icon="chevron-left" label="Go back" onPress={() => router.back()} />} right={!source ? <Pressable onPress={() => switchMode(mode === 'guided' ? 'quick' : 'guided')} style={styles.modeButton} accessibilityRole="button" accessibilityLabel={`${mode === 'guided' ? 'Turn off' : 'Turn on'} tutorial mode`}><Icon name={mode === 'guided' ? 'school' : 'lightning-bolt'} size={17} color={mode === 'guided' ? palette.cyan : palette.warning} /><Text style={styles.modeButtonText}>{mode === 'guided' ? 'Tutorial on' : 'Quick mode'}</Text></Pressable> : null} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.journey} accessibilityRole="tablist">
-        {flow.map((item, index) => <Pressable key={item} disabled={index > safeStep} onPress={() => setStep(index)} style={[styles.journeyStep, index === safeStep && styles.journeyStepActive, index < safeStep && styles.journeyStepDone]} accessibilityRole="tab" accessibilityState={{ selected: index === safeStep, disabled: index > safeStep }} accessibilityLabel={`${index + 1}. ${pageLabels[item]}`}><View style={styles.journeyNumber}>{index < safeStep ? <Icon name="check" size={14} color={palette.ink} /> : <Text style={[styles.journeyNumberText, index === safeStep && styles.journeyNumberTextActive]}>{index + 1}</Text>}</View><Text style={[styles.journeyLabel, index === safeStep && styles.journeyLabelActive]}>{pageLabels[item]}</Text></Pressable>)}
-      </ScrollView>
-      <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${((safeStep + 1) / flow.length) * 100}%` }]} /></View>
-      <Animated.View style={{ opacity: fade, transform: [{ translateX: slide }] }}>
-        {page === 'intro' ? <TutorialIntroStep /> : null}
-        {page === 'goal' ? mode === 'guided' ? <GuidedGoalStep preferences={preferences} onPreferencesChange={setPreferences} /> : <GoalStep preferences={preferences} onPreferencesChange={setPreferences} onTemplate={() => applyTemplate(false)} /> : null}
-        {page === 'starting' ? <StartingPointStep hasTemplate={items.length > 0} onGuided={chooseGuidedStart} onTemplate={() => applyTemplate(true)} /> : null}
-        {page === 'pantry' ? <>{mode === 'guided' ? <TutorialExplainer title="What this step does">Mark what you would actually use today. Missing building blocks are shown before anything is added.</TutorialExplainer> : null}<PantryStep ingredients={ingredients} availableIds={availableIds} onToggle={(id) => setAvailableIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} /></> : null}
-        {page === 'recommendation' ? <>{mode === 'guided' ? <TutorialExplainer title="You choose the final list">Checked ingredients move forward. Optional upgrades stay optional, and nothing is inserted after this page without your action.</TutorialExplainer> : null}<RecommendationStep recommendation={recommendation} selectedIds={recommendedIds} onToggle={(id) => setRecommendedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} onApply={applyRecommendation} /></> : null}
-        {page === 'adjust' ? <>{mode === 'guided' ? <TutorialExplainer title="Now the details">Type amounts, use the − and + controls, or tap Recommended. The kitchen view translates the exact stored amount.</TutorialExplainer> : null}<AdjustStep name={name} onNameChange={setName} items={items} ingredients={ingredients} settings={settings} issue={adjustmentIssue} highlightedIds={highlightedIds} recommendedAmounts={recommendedAmounts} onAmountChange={(id, amount) => { setItems((current) => current.map((item) => item.ingredientId === id ? { ...item, amount } : item)); setAppliedFix(''); }} onMeasurementModeChange={(measurementMode) => { void updateSettings({ measurementMode }); }} onUnitSystemChange={(units) => { void updateSettings({ units }); }} /></> : null}
-        {page === 'review' ? <>{mode === 'guided' ? <TutorialExplainer title="Final safety check">Review fill level, nutrition, and the suggested program. Warning fixes only apply after you choose one.</TutorialExplainer> : null}<ReviewStep nutrition={nutrition} validation={validation} program={program} items={items} ingredients={ingredients} settings={settings} fixOptions={fixOptions} appliedFix={appliedFix} onAdjustIssue={(issue) => { setAdjustmentIssue(issue); setAppliedFix(''); goToPage('adjust'); }} onApplyFix={applyFix} /></> : null}
-      </Animated.View>
-      <View style={styles.footer}>{safeStep > 0 ? <Pressable onPress={() => { setAdjustmentIssue(''); move(-1); }} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Previous builder page"><Icon name="arrow-left" size={20} color={palette.textMuted} /><Text style={styles.backText}>Back</Text></Pressable> : <View />}{page !== 'starting' ? <GradientButton title={continueTitle} icon="arrow-right" disabled={continueDisabled} onPress={continueAction} /> : null}</View>
-      {page === 'starting' ? <Text style={styles.choosePrompt}>Choose a starting point above to continue.</Text> : null}
-      {page === 'review' && validation.errors.length ? <Text style={styles.blocked}>Resolve the highlighted capacity error before saving.</Text> : null}
-      <Text style={styles.legal}>Guidance uses ingredient roles and stored label data. It is not medical advice or generative AI.</Text>
-    </Screen>
-  );
+  return <Screen resetKey={stage} footer={footer} contentStyle={styles.screenContent}>
+    <AppHeader title={source ? 'Edit recipe' : stage === 'recommendation' ? 'Your recipe' : stage === 'customize' ? 'Customize' : stage === 'review' ? 'Review' : 'Build my pint'} left={<IconButton icon="chevron-left" label="Go back" onPress={back} />} />
+    <CompactProgress stage={stage} />
+    <Animated.View style={{ opacity: fade, transform: [{ translateX: slide }] }}>
+      {questionStages.has(stage) ? <BuilderQuestionStep stage={stage} answers={answers} onChange={setAnswers} showGuidance={settings.tutorialMode} /> : null}
+      {stage === 'recommendation' ? <RecommendationResult name={name} expectedTexture={recommendation.expectedTexture} rationale={recommendation.rationale} nutrition={nutrition} validation={validation} program={program} onUse={() => setStage('review')} onCustomize={() => setStage('customize')} pantryOpen={pantryOpen} onTogglePantry={() => setPantryOpen((current) => !current)}>{<OptionalPantry ingredients={ingredients} selectedIds={pantryIds} proposals={proposals} onToggle={(id) => setPantryIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} onApply={applyProposals} />}</RecommendationResult> : null}
+      {stage === 'customize' ? <CollapsedAdjustStep name={name} onNameChange={setName} items={items} ingredients={ingredients} settings={settings} issue={adjustmentIssue} highlightedIds={highlightedIds} recommendedAmounts={recommendedAmounts} onItemsChange={(next) => { setItems(next); setAppliedFix(''); }} onMeasurementModeChange={(measurementMode) => void updateSettings({ measurementMode })} onUnitSystemChange={(units) => void updateSettings({ units })} /> : null}
+      {stage === 'review' ? <ReviewStep nutrition={nutrition} validation={validation} program={program} items={items} ingredients={ingredients} settings={settings} fixOptions={fixOptions} appliedFix={appliedFix} onAdjustIssue={(issue) => { setAdjustmentIssue(issue); setAppliedFix(''); setStage('customize'); }} onApplyFix={applyFix} /> : null}
+    </Animated.View>
+    {stage === 'review' && validation.errors.length ? <Text style={styles.blocked}>Choose “Fit this container” before saving.</Text> : null}
+    <Text style={styles.legal}>Recommendations are estimates. Check your machine’s fill line and official instructions.</Text>
+  </Screen>;
 }
 
 const styles = StyleSheet.create({
-  modeButton: { minHeight: 44, minWidth: 84, borderRadius: radii.pill, borderWidth: 1, borderColor: 'rgba(78,217,232,0.35)', backgroundColor: 'rgba(78,217,232,0.08)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xs },
-  modeButtonText: { color: palette.text, fontSize: 12, lineHeight: 16, fontWeight: '900', marginTop: 1 },
-  journey: { gap: spacing.xs, paddingBottom: spacing.sm },
-  journeyStep: { minHeight: 48, minWidth: 116, borderRadius: radii.pill, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.panelSoft, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.sm },
-  journeyStepActive: { borderColor: palette.pink, backgroundColor: 'rgba(241,78,155,0.14)' },
-  journeyStepDone: { borderColor: 'rgba(78,217,232,0.35)' },
-  journeyNumber: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.panelRaised },
-  journeyNumberText: { color: palette.textMuted, fontSize: 13, fontWeight: '900' },
-  journeyNumberTextActive: { color: palette.pink },
-  journeyLabel: { color: palette.textMuted, fontSize: 13, lineHeight: 18, fontWeight: '800' },
-  journeyLabelActive: { color: palette.text },
-  progressTrack: { height: 6, borderRadius: 3, backgroundColor: palette.panelRaised, overflow: 'hidden', marginBottom: spacing.lg },
-  progressFill: { height: '100%', borderRadius: 3, backgroundColor: palette.pink },
-  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, marginTop: spacing.xl },
-  backButton: { minHeight: 52, paddingHorizontal: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  backText: { color: palette.textMuted, fontSize: 16, fontWeight: '800' },
-  choosePrompt: { ...textStyles.caption, color: palette.cyan, textAlign: 'center', marginTop: spacing.sm },
+  screenContent: { paddingBottom: spacing.xl },
+  footer: { minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderTopWidth: 1, borderTopColor: palette.border, backgroundColor: palette.ink },
+  backButton: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.sm },
+  backText: { color: palette.textMuted, fontSize: 16, fontWeight: '900' },
   blocked: { color: palette.danger, fontSize: 14, lineHeight: 20, fontWeight: '800', textAlign: 'center', marginTop: spacing.sm },
-  legal: { ...textStyles.caption, textAlign: 'center', color: palette.textFaint, marginTop: spacing.md },
+  legal: { color: palette.textFaint, fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: spacing.lg },
 });

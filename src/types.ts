@@ -76,6 +76,51 @@ export const recipeSchema = z.object({
   updatedAt: z.string(),
 });
 
+export const texturePreferenceSchema = z.enum(['creamy', 'light', 'fruit-forward', 'thick']);
+export const recipeGoalSchema = z.enum(['high-protein', 'classic', 'lower-calorie', 'dairy-free']);
+export const beginnerFlavorSchema = z.enum(['strawberry', 'chocolate', 'vanilla', 'mint', 'berry', 'surprise-me']);
+export const beginnerBuilderAnswersSchema = z.object({
+  texture: texturePreferenceSchema.default('creamy'),
+  flavor: beginnerFlavorSchema.default('strawberry'),
+  goal: recipeGoalSchema.default('high-protein'),
+});
+export const beginnerBuilderStageSchema = z.enum(['question-texture', 'question-flavor', 'question-goal', 'recommendation', 'customize', 'review']);
+const beginnerBuilderDraftSchema = z.object({
+  version: z.literal(2),
+  stage: beginnerBuilderStageSchema.default('question-texture'),
+  name: z.string().default('My Creamy Creation'),
+  answers: beginnerBuilderAnswersSchema.default({ texture: 'creamy', flavor: 'strawberry', goal: 'high-protein' }),
+  pantryIds: z.array(z.string()).default([]),
+  items: z.array(recipeIngredientSchema).default([]),
+  recommendedAmounts: z.record(z.string(), z.number().nonnegative()).default({}),
+});
+const legacyBuilderDraftSchema = z.object({
+  step: z.number().int().min(0).max(6).default(0),
+  mode: z.enum(['guided', 'quick']).default('guided'),
+  name: z.string().default('My Creamy Creation'),
+  preferences: z.object({ style: recipeStyleSchema, flavor: z.string().default('anything'), craving: z.string().default('') }),
+  availableIds: z.array(z.string()).default([]),
+  items: z.array(recipeIngredientSchema).default([]),
+  recommendedIds: z.array(z.string()).default([]),
+  recommendedAmounts: z.record(z.string(), z.number().nonnegative()).default({}),
+});
+export const guidedBuilderDraftSchema = z.union([beginnerBuilderDraftSchema, legacyBuilderDraftSchema]).transform((draft) => {
+  if ('version' in draft) return draft;
+  const flavor = beginnerFlavorSchema.safeParse(draft.preferences.flavor).success ? beginnerFlavorSchema.parse(draft.preferences.flavor) : 'surprise-me';
+  const texture: z.infer<typeof texturePreferenceSchema> = draft.preferences.style === 'sorbet' ? 'fruit-forward' : draft.preferences.style === 'lite-ice-cream' ? 'light' : draft.preferences.style === 'smoothie-bowl' ? 'thick' : 'creamy';
+  const ids = new Set(draft.items.map((item) => item.ingredientId));
+  const goal: z.infer<typeof recipeGoalSchema> = [...ids].some((id) => /whey|casein|protein/.test(id)) ? 'high-protein' : 'classic';
+  return {
+    version: 2 as const,
+    stage: draft.items.length ? 'customize' as const : 'question-texture' as const,
+    name: draft.name,
+    answers: { texture, flavor, goal },
+    pantryIds: draft.availableIds,
+    items: draft.items,
+    recommendedAmounts: draft.recommendedAmounts,
+  };
+});
+
 export const userSettingsSchema = z.object({
   onboarded: z.boolean().default(false),
   machineId: z.string().default('nc501'),
@@ -86,20 +131,7 @@ export const userSettingsSchema = z.object({
   ingredientLibraryView: z.enum(['list', 'grid']).default('list'),
   tutorialMode: z.boolean().default(true),
   firstPintCompleted: z.boolean().default(false),
-  guidedBuilderDraft: z.object({
-    step: z.number().int().min(0).max(6).default(0),
-    mode: z.enum(['guided', 'quick']).default('guided'),
-    name: z.string().default('My Creamy Creation'),
-    preferences: z.object({
-      style: recipeStyleSchema,
-      flavor: z.string().default('anything'),
-      craving: z.string().default(''),
-    }),
-    availableIds: z.array(z.string()).default([]),
-    items: z.array(recipeIngredientSchema).default([]),
-    recommendedIds: z.array(z.string()).default([]),
-    recommendedAmounts: z.record(z.string(), z.number().nonnegative()).default({}),
-  }).nullable().default(null),
+  guidedBuilderDraft: guidedBuilderDraftSchema.nullable().default(null),
 });
 
 export type IngredientCategory = z.infer<typeof ingredientCategorySchema>;
@@ -117,6 +149,19 @@ export type Recipe = z.infer<typeof recipeSchema>;
 export type UserSettings = z.infer<typeof userSettingsSchema>;
 export type BuilderMode = 'guided' | 'quick';
 export type GuidedBuilderDraft = NonNullable<UserSettings['guidedBuilderDraft']>;
+export type TexturePreference = z.infer<typeof texturePreferenceSchema>;
+export type RecipeGoal = z.infer<typeof recipeGoalSchema>;
+export type BeginnerFlavor = z.infer<typeof beginnerFlavorSchema>;
+export type BeginnerBuilderAnswers = z.infer<typeof beginnerBuilderAnswersSchema>;
+export type BeginnerBuilderStage = z.infer<typeof beginnerBuilderStageSchema>;
+export type SubstitutionProposal = {
+  original: RecipeIngredient;
+  replacement: RecipeIngredient;
+  rationale: string;
+  calorieDelta: number;
+  proteinDelta: number;
+  fillDeltaMl: number;
+};
 
 export const builderPreferencesSchema = z.object({
   style: recipeStyleSchema,

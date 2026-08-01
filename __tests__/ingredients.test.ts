@@ -35,7 +35,9 @@ describe('ingredient catalog', () => {
       recommendedIds: ['milk-2'],
       recommendedAmounts: { 'milk-2': 240 },
     } });
-    expect(settings.guidedBuilderDraft?.step).toBe(3);
-    expect(settings.guidedBuilderDraft?.preferences.craving).toBe('');
+    expect(settings.guidedBuilderDraft?.version).toBe(2);
+    expect(settings.guidedBuilderDraft?.stage).toBe('customize');
+    expect(settings.guidedBuilderDraft?.answers).toEqual({ texture: 'creamy', flavor: 'vanilla', goal: 'classic' });
+    expect(settings.guidedBuilderDraft?.items).toEqual([{ ingredientId: 'milk-2', amount: 240, unit: 'ml' }]);
   });
 });

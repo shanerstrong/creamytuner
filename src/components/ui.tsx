@@ -31,7 +31,7 @@ export function Icon({ name, size = 22, color = palette.text }: { name: IconName
   return <MaterialCommunityIcons name={name} size={size} color={color} />;
 }
 
-export function Screen({ children, scroll = true, contentStyle, resetKey, ...props }: ScrollViewProps & { children: ReactNode; scroll?: boolean; contentStyle?: StyleProp<ViewStyle>; resetKey?: string | number }) {
+export function Screen({ children, scroll = true, contentStyle, resetKey, footer, ...props }: ScrollViewProps & { children: ReactNode; scroll?: boolean; contentStyle?: StyleProp<ViewStyle>; resetKey?: string | number; footer?: ReactNode }) {
   const pathname = usePathname();
   const scrollRef = useRef<ScrollView>(null);
   const content = <View style={[styles.screenInner, contentStyle]}>{children}</View>;
@@ -48,6 +48,7 @@ export function Screen({ children, scroll = true, contentStyle, resetKey, ...pro
       <View pointerEvents="none" style={styles.glowBottom} />
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         {scroll ? <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} {...props}>{content}</ScrollView> : content}
+        {footer}
       </SafeAreaView>
     </View>
   );
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
   nutritionMetric: { width: 82, alignItems: 'center' },
   metricLabel: { color: palette.textMuted, fontSize: 13, lineHeight: 17 },
   metricValue: { color: palette.text, fontSize: 17, fontWeight: '800', marginTop: 2 },
-  metricNote: { color: palette.textFaint, fontSize: 11, lineHeight: 14, marginTop: 1 },
+  metricNote: { color: palette.textFaint, fontSize: 13, lineHeight: 18, marginTop: 1 },
   recipeCard: { width: '47.5%', aspectRatio: 0.83, borderRadius: radii.md, overflow: 'hidden', borderWidth: 1, borderColor: palette.border, backgroundColor: 'transparent' },
   recipeCardWide: { width: '100%', aspectRatio: 1.65 },
   recipeImage: { width: '100%', height: '100%', justifyContent: 'flex-end' },
