@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
@@ -13,6 +13,7 @@ import { tutorialDraftSchema } from '@/src/types';
 
 export default function WelcomeScreen() {
   const { ready, settings, updateSettings } = useApp();
+  const pathname = usePathname();
   const { height } = useWindowDimensions();
   const compact = height < 900;
   const veryCompact = height < 700;
@@ -20,8 +21,8 @@ export default function WelcomeScreen() {
   const hasDraft = settings.tutorialDraft.stage !== 'machine' || settings.tutorialDraft.baseItems.length > 0 || settings.tutorialDraft.selectedIngredientIds.length > 0;
 
   useEffect(() => {
-    if (ready && tutorialComplete) router.replace('/(tabs)/home');
-  }, [ready, tutorialComplete]);
+    if (ready && tutorialComplete && pathname === '/') router.replace('/(tabs)/home');
+  }, [pathname, ready, tutorialComplete]);
 
   if (!ready || tutorialComplete) return <LoadingScreen />;
 
