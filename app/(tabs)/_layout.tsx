@@ -1,7 +1,17 @@
-import { Tabs } from 'expo-router';
-import { Icon, type IconName } from '@/src/components/ui';
+import { router, Tabs } from 'expo-router';
+import { useEffect } from 'react';
+
+import { Icon, LoadingScreen, type IconName } from '@/src/components/ui';
+import { CURRENT_ONBOARDING_VERSION } from '@/src/domain/tutorial';
+import { useApp } from '@/src/providers/app-provider';
 
 export default function TabLayout() {
+  const { ready, settings } = useApp();
+  const tutorialComplete = settings.onboarded && settings.onboardingVersion >= CURRENT_ONBOARDING_VERSION;
+  useEffect(() => {
+    if (ready && !tutorialComplete) router.replace('/');
+  }, [ready, tutorialComplete]);
+  if (!ready || !tutorialComplete) return <LoadingScreen />;
   return (
     <Tabs
       tabBar={() => null}

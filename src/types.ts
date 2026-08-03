@@ -130,6 +130,22 @@ export const freezeTimerSchema = z.object({
   notificationScheduled: z.boolean().default(false),
 });
 
+export const tutorialTextureResultSchema = z.enum(['perfect', 'powdery', 'icy', 'chalky', 'too-soft']);
+export const tutorialDraftSchema = z.object({
+  version: z.literal(1).default(1),
+  step: z.number().int().min(0).max(10).default(0),
+  machineId: z.string().default('nc501'),
+  baseId: z.string().default('milk-2'),
+  baseAmountMl: z.number().positive().default(300),
+  proteinId: z.string().nullable().default('whey-vanilla'),
+  helperId: z.string().nullable().default('jello-vanilla-zero'),
+  sweetenerId: z.string().nullable().default('allulose'),
+  flavorId: z.string().nullable().default('strawberries'),
+  mixInId: z.string().nullable().default(null),
+  textureResult: tutorialTextureResultSchema.default('perfect'),
+  recipeId: z.string().default(''),
+});
+
 export const userSettingsSchema = z.object({
   onboarded: z.boolean().default(false),
   machineId: z.string().default('nc501'),
@@ -142,6 +158,22 @@ export const userSettingsSchema = z.object({
   firstPintCompleted: z.boolean().default(false),
   guidedBuilderDraft: guidedBuilderDraftSchema.nullable().default(null),
   activeFreezeTimer: freezeTimerSchema.nullable().default(null),
+  onboardingVersion: z.number().int().nonnegative().default(0),
+  tutorialPintVisible: z.boolean().default(true),
+  tutorialDraft: tutorialDraftSchema.default({
+    version: 1,
+    step: 0,
+    machineId: 'nc501',
+    baseId: 'milk-2',
+    baseAmountMl: 300,
+    proteinId: 'whey-vanilla',
+    helperId: 'jello-vanilla-zero',
+    sweetenerId: 'allulose',
+    flavorId: 'strawberries',
+    mixInId: null,
+    textureResult: 'perfect',
+    recipeId: '',
+  }),
 });
 
 export type IngredientCategory = z.infer<typeof ingredientCategorySchema>;
@@ -160,6 +192,8 @@ export type UserSettings = z.infer<typeof userSettingsSchema>;
 export type BuilderMode = 'guided' | 'quick';
 export type GuidedBuilderDraft = NonNullable<UserSettings['guidedBuilderDraft']>;
 export type FreezeTimer = z.infer<typeof freezeTimerSchema>;
+export type TutorialDraft = z.infer<typeof tutorialDraftSchema>;
+export type TutorialTextureResult = z.infer<typeof tutorialTextureResultSchema>;
 export type TexturePreference = z.infer<typeof texturePreferenceSchema>;
 export type RecipeGoal = z.infer<typeof recipeGoalSchema>;
 export type BeginnerFlavor = z.infer<typeof beginnerFlavorSchema>;

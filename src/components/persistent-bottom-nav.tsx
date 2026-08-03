@@ -4,6 +4,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/src/components/ui';
+import { CURRENT_ONBOARDING_VERSION } from '@/src/domain/tutorial';
 import { useApp } from '@/src/providers/app-provider';
 import { palette, spacing } from '@/src/theme';
 
@@ -26,7 +27,7 @@ function activeDestination(pathname: string) {
 export function PersistentBottomNav() {
   const pathname = usePathname();
   const { ready, settings } = useApp();
-  if (!ready || !settings.onboarded) return null;
+  if (!ready || !settings.onboarded || settings.onboardingVersion < CURRENT_ONBOARDING_VERSION) return null;
   const active = activeDestination(pathname);
   return (
     <SafeAreaView edges={['bottom']} style={styles.safe}>

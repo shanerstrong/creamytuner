@@ -22,6 +22,7 @@ export default function RootLayout() {
           <View style={styles.shell}>
             <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.ink }, animation: 'fade' }}>
               <Stack.Screen name="index" />
+              <Stack.Screen name="tutorial" options={{ animation: 'slide_from_right', gestureEnabled: false }} />
               <Stack.Screen name="machines" />
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="builder" options={{ animation: 'slide_from_right' }} />

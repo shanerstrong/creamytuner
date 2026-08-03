@@ -4,6 +4,7 @@ import { Alert, StyleSheet, Switch, Text, View } from 'react-native';
 import { AppHeader, GlassCard, Icon, IconButton, Screen, type IconName } from '@/src/components/ui';
 import { machineById } from '@/src/data/machines';
 import { isFreezeTimerReady } from '@/src/domain/freeze-timer';
+import { CURRENT_ONBOARDING_VERSION } from '@/src/domain/tutorial';
 import { useApp } from '@/src/providers/app-provider';
 import { palette, spacing } from '@/src/theme';
 import { cancelFreezeReminder, scheduleFreezeReminder } from '@/src/services/freeze-reminder';
@@ -39,6 +40,14 @@ export default function SettingsScreen() {
     }
     await updateSettings({ notifications });
   };
+  const replayTutorial = async () => {
+    await updateSettings({
+      onboarded: false,
+      onboardingVersion: CURRENT_ONBOARDING_VERSION - 1,
+      tutorialDraft: { ...settings.tutorialDraft, step: 0 },
+    });
+    router.replace('/');
+  };
   return (
     <Screen>
       <AppHeader title="Settings" left={<IconButton icon="chevron-left" label="Go back" onPress={() => router.back()} />} />
@@ -48,6 +57,7 @@ export default function SettingsScreen() {
           <View style={styles.copy}><Text style={styles.title}>Tutorial Mode</Text><Text style={styles.subtitle}>Show step-by-step help, fill guidance, and timer tips</Text></View>
           <Switch value={settings.tutorialMode} onValueChange={(tutorialMode) => updateSettings({ tutorialMode })} trackColor={{ false: palette.panelRaised, true: palette.cyan }} thumbColor={palette.white} accessibilityLabel="Toggle beginner guidance" />
         </GlassCard>
+        <SettingRow icon="play-circle-outline" title="Replay first-pint tutorial" value="Walk through every step again" onPress={() => { void replayTutorial(); }} />
         <SettingRow icon="tune-vertical" title="Advanced builder" value="Start with full ingredient controls" onPress={() => router.push('/builder?advanced=1')} />
         <SettingRow icon="ruler-square" title="Unit system" value={settings.units === 'metric' ? 'Metric (g, ml)' : 'US (oz, fl oz)'} onPress={() => updateSettings({ units: settings.units === 'metric' ? 'us' : 'metric' })} />
         <SettingRow icon="format-list-numbered" title="Measurement style" value={settings.measurementMode === 'kitchen' ? 'Kitchen-friendly (cups, tbsp, tsp)' : 'Exact amounts'} onPress={() => updateSettings({ measurementMode: settings.measurementMode === 'kitchen' ? 'exact' : 'kitchen' })} />

@@ -6,11 +6,11 @@ import { AppHeader, GlassCard, GradientButton, Icon, IconButton, Screen, type Ic
 import { palette, radii, spacing } from '@/src/theme';
 
 const issues = [
-  { id: 'powdery', title: 'Too Powdery', subtitle: 'Dry, crumbly texture', icon: 'cube-outline' as IconName, advice: 'Use Re-Spin once without adding liquid. If it stays powdery, add only 1–2 tablespoons of milk and Re-Spin again.' },
+  { id: 'powdery', title: 'Too Powdery', subtitle: 'Dry, crumbly texture', icon: 'cube-outline' as IconName, advice: 'Pack it down with a spoon or silicone spatula, then use Re-Spin once without adding liquid. Only consider a small measured splash if it stays powdery and your recipe calls for a softer result.' },
   { id: 'soft', title: 'Too Soft', subtitle: 'Melting too quickly', icon: 'ice-cream' as IconName, advice: 'Return the pint to the freezer until firm. Confirm the freezer is cold enough and the base froze flat for at least 24 hours.' },
   { id: 'icy', title: 'Too Icy', subtitle: 'Icicles or icy bites', icon: 'snowflake' as IconName, advice: 'Review the sweetener and stabilizer balance. A small amount of guar gum or a recipe-appropriate sweetener can reduce iciness next time.' },
   { id: 'wont-spin', title: "Won't Spin", subtitle: 'Machine struggles or stops', icon: 'cog-off-outline' as IconName, advice: 'Stop the machine. Confirm the tub is seated correctly and the frozen surface is flat. Never process a tilted block or exceed the max-fill line.' },
-  { id: 'crumbly', title: 'Sides Crumbly', subtitle: 'Gap around the edges', icon: 'circle-outline' as IconName, advice: 'Scrape down the loose sides into the center, then use Re-Spin. Avoid adding extra liquid unless the whole pint is powdery.' },
+  { id: 'crumbly', title: 'Sides Crumbly', subtitle: 'Gap around the edges', icon: 'circle-outline' as IconName, advice: 'Gently move the loose sides into the center with a spoon or silicone spatula, then use Re-Spin. Do not scrape aggressively with a knife or metal utensil.' },
   { id: 'hard', title: 'Center Hard', subtitle: 'Hard block in the middle', icon: 'record-circle-outline' as IconName, advice: 'Let the pint sit at room temperature for a few minutes, confirm it is level, then process using the recipe-appropriate program.' },
 ];
 
