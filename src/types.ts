@@ -133,8 +133,10 @@ export const freezeTimerSchema = z.object({
 });
 
 export const tutorialTextureResultSchema = z.enum(['perfect', 'powdery', 'icy', 'chalky', 'too-soft']);
+export const dietaryPreferenceSchema = z.enum(['vegan', 'vegetarian', 'gluten-free', 'no-added-sugar']);
 export const tutorialStageSchema = z.enum([
   'machine',
+  'dietary',
   'base',
   'helper',
   'sweetener',
@@ -165,6 +167,8 @@ const tutorialDraftV3Schema = z.object({
   spinMinutes: z.number().int().min(1).max(10).default(2),
   photoUri: z.string().default(''),
   recipeId: z.string().default(''),
+  recipeName: z.string().default(''),
+  dietaryPreferences: z.array(dietaryPreferenceSchema).default([]),
   disclosures: z.array(z.string()).default([]),
   freezeTimerStartedAt: z.string().nullable().default(null),
 });
@@ -252,6 +256,8 @@ export const userSettingsSchema = z.object({
     spinMinutes: 2,
     photoUri: '',
     recipeId: '',
+    recipeName: '',
+    dietaryPreferences: [],
     disclosures: [],
     freezeTimerStartedAt: null,
   }),

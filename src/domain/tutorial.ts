@@ -2,7 +2,7 @@ import { estimateVolumeMl } from '@/src/domain/nutrition';
 import type { Ingredient, Recipe, RecipeIngredient, TutorialDraft, TutorialTextureResult } from '@/src/types';
 
 export const CURRENT_ONBOARDING_VERSION = 5;
-export const TUTORIAL_STAGES = ['machine', 'base', 'helper', 'sweetener', 'flavor', 'blend', 'freeze', 'first-spin', 'evaluate', 'mix-ins', 'respin', 'complete'] as const;
+export const TUTORIAL_STAGES = ['machine', 'dietary', 'base', 'helper', 'sweetener', 'flavor', 'blend', 'freeze', 'first-spin', 'evaluate', 'mix-ins', 'respin', 'complete'] as const;
 export const TUTORIAL_STEP_COUNT = TUTORIAL_STAGES.length;
 
 export type TutorialBaseTemplate = {
@@ -25,6 +25,7 @@ export function normalizeTutorialDraft(draft: TutorialDraft): TutorialDraft {
     baseItems: draft.baseItems.map((item) => ({ ...item })),
     selectedIngredientIds: [...new Set(draft.selectedIngredientIds)],
     disclosures: [...new Set(draft.disclosures)],
+    dietaryPreferences: [...new Set(draft.dietaryPreferences)],
   };
 }
 
@@ -49,7 +50,7 @@ export function tutorialRecommendation(draft: TutorialDraft, ingredients: Ingred
   const baseTotal = normalized.baseItems.reduce((sum, item) => sum + item.amount, 0);
   const plantTotal = normalized.baseItems.reduce((sum, item) => item.ingredientId === 'almond-milk' || item.ingredientId === 'soy-milk' ? sum + item.amount : sum, 0);
   const plantHeavy = baseTotal > 0 && plantTotal / baseTotal >= 0.5;
-  const id = step === 'protein' ? 'whey-vanilla' : step === 'helper' ? (plantHeavy ? 'xanthan-gum' : 'jello-vanilla-zero') : step === 'sweetener' ? 'allulose' : 'strawberries';
+  const id = step === 'protein' ? 'whey-vanilla' : step === 'helper' ? (plantHeavy || normalized.dietaryPreferences.includes('vegan') ? 'xanthan-gum' : 'jello-vanilla-zero') : step === 'sweetener' ? (normalized.dietaryPreferences.includes('no-added-sugar') ? 'monk-fruit' : 'sugar') : 'strawberries';
   const ingredient = ingredients.find((candidate) => candidate.id === id);
   if (!ingredient) return null;
   const reason = step === 'protein'
@@ -57,7 +58,7 @@ export function tutorialRecommendation(draft: TutorialDraft, ingredients: Ingred
     : step === 'helper'
       ? plantHeavy ? 'A very small amount helps a plant-heavy base hold together.' : 'Pudding mix is a forgiving beginner option for body and flavor.'
       : step === 'sweetener'
-        ? 'Allulose sweetens while helping the frozen base stay easier to scoop.'
+        ? normalized.dietaryPreferences.includes('no-added-sugar') ? 'Monk fruit adds sweetness without added sugar.' : 'Sugar is the familiar starting point and helps keep the pint scoopable.'
         : 'Strawberry is a forgiving first flavor and blends smoothly into the base.';
   return { ingredientId: ingredient.id, amount: ingredient.defaultAmount, reason };
 }
@@ -98,6 +99,7 @@ export function fitTutorialBaseItems(draft: TutorialDraft, ingredients: Ingredie
 }
 
 export function tutorialRecipePresentation(draft: TutorialDraft): { name: string; imageKey: Recipe['imageKey'] } {
+  if (draft.recipeName?.trim()) return { name: draft.recipeName.trim(), imageKey: draft.selectedIngredientIds.includes('cocoa') ? 'chocolate' : 'strawberry' };
   if (draft.selectedIngredientIds.includes('cocoa')) return { name: 'My First Chocolate Pint', imageKey: 'chocolate' };
   if (draft.selectedIngredientIds.includes('banana')) return { name: 'My First Banana Pint', imageKey: 'cookies' };
   if (draft.selectedIngredientIds.includes('vanilla')) return { name: 'My First Vanilla Pint', imageKey: 'cookies' };

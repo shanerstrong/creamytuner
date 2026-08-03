@@ -23,7 +23,7 @@ describe('first-pint tutorial', () => {
   });
 
   test('removes the redundant correction page and resumes old drafts at mix-ins', () => {
-    expect(TUTORIAL_STAGES).toHaveLength(12);
+    expect(TUTORIAL_STAGES).toHaveLength(13);
     expect(TUTORIAL_STAGES).not.toContain('correction');
     expect(tutorialDraftSchema.parse({ version: 3, stage: 'correction' }).stage).toBe('mix-ins');
   });
