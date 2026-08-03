@@ -2,7 +2,7 @@ import { estimateVolumeMl } from '@/src/domain/nutrition';
 import type { Ingredient, Recipe, RecipeIngredient, TutorialDraft, TutorialTextureResult } from '@/src/types';
 
 export const CURRENT_ONBOARDING_VERSION = 5;
-export const TUTORIAL_STAGES = ['machine', 'base', 'helper', 'sweetener', 'flavor', 'blend', 'freeze', 'first-spin', 'evaluate', 'correction', 'mix-ins', 'respin', 'complete'] as const;
+export const TUTORIAL_STAGES = ['machine', 'base', 'helper', 'sweetener', 'flavor', 'blend', 'freeze', 'first-spin', 'evaluate', 'mix-ins', 'respin', 'complete'] as const;
 export const TUTORIAL_STEP_COUNT = TUTORIAL_STAGES.length;
 
 export type TutorialBaseTemplate = {

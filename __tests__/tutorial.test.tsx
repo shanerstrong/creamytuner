@@ -5,7 +5,7 @@ import { TutorialAmountEditor } from '@/src/components/tutorial/tutorial-amount-
 import { seededIngredients } from '@/src/data/ingredients';
 import { machineById, machines } from '@/src/data/machines';
 import { estimateVolumeMl } from '@/src/domain/nutrition';
-import { CURRENT_ONBOARDING_VERSION, fitTutorialBaseItems, normalizeTutorialDraft, tutorialBaseTemplates, tutorialItems, tutorialMixInItem, tutorialRecipePresentation, tutorialRecommendation, tutorialTextureGuidance } from '@/src/domain/tutorial';
+import { CURRENT_ONBOARDING_VERSION, TUTORIAL_STAGES, fitTutorialBaseItems, normalizeTutorialDraft, tutorialBaseTemplates, tutorialItems, tutorialMixInItem, tutorialRecipePresentation, tutorialRecommendation, tutorialTextureGuidance } from '@/src/domain/tutorial';
 import { tutorialDraftSchema, userSettingsSchema } from '@/src/types';
 
 describe('first-pint tutorial', () => {
@@ -20,6 +20,18 @@ describe('first-pint tutorial', () => {
     const migrated = normalizeTutorialDraft(oldDraft);
     expect(migrated.version).toBe(3);
     expect(migrated.baseItems).toEqual([{ ingredientId: 'soy-milk', amount: 325, unit: 'ml' }]);
+  });
+
+  test('removes the redundant correction page and resumes old drafts at mix-ins', () => {
+    expect(TUTORIAL_STAGES).toHaveLength(12);
+    expect(TUTORIAL_STAGES).not.toContain('correction');
+    expect(tutorialDraftSchema.parse({ version: 3, stage: 'correction' }).stage).toBe('mix-ins');
+  });
+
+  test('texture answers support an unselected state', () => {
+    const draft = tutorialDraftSchema.parse({ textureResult: null, finalTextureResult: null });
+    expect(draft.textureResult).toBeNull();
+    expect(draft.finalTextureResult).toBeNull();
   });
 
   test('a kitchen-unit minus reaches zero and removes the ingredient', async () => {
@@ -96,5 +108,6 @@ describe('first-pint tutorial', () => {
     expect(screen.getByText('51%')).toBeTruthy();
     await screen.rerender(<FooterCreamy amountMl={500} capacityMl={473} addition={{ kind: 'spoon', nonce: 2 }} />);
     expect(screen.getByText('TOO FULL')).toBeTruthy();
+    expect(screen.queryByRole('button')).toBeNull();
   });
 });

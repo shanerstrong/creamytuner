@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Image, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Image, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useReducedMotion } from 'react-native-reanimated';
 
@@ -85,6 +85,7 @@ export default function TutorialScreen() {
   const [editorId, setEditorId] = useState<string | null>(null);
   const [removed, setRemoved] = useState<RemovedItem | null>(null);
   const [busy, setBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [timerMessage, setTimerMessage] = useState('');
   const [transitioning, setTransitioning] = useState(false);
   const initialized = useRef(false);
@@ -253,12 +254,18 @@ export default function TutorialScreen() {
 
   const addPintPhoto = async (source: PintPhotoSource) => {
     setBusy(true);
+    setPhotoBusy(true);
     try {
       const photoUri = await choosePintPhoto(source);
-      if (photoUri) patchDraft({ photoUri });
+      if (photoUri) {
+        const next = { ...draft, photoUri };
+        await updateSettings({ tutorialDraft: next, machineId: next.machineId });
+        setDraft(next);
+      }
     } catch (error) {
       Alert.alert('Could not add photo', error instanceof Error ? error.message : 'Please try again.');
     } finally {
+      setPhotoBusy(false);
       setBusy(false);
     }
   };
@@ -292,17 +299,26 @@ export default function TutorialScreen() {
 
   const finishTutorial = async () => {
     setBusy(true);
-    const recipe = await saveCurrentRecipe();
-    const finalDraft = { ...draft, stage: 'complete' as const, recipeId: recipe.id };
-    await updateSettings({ tutorialDraft: finalDraft, machineId: finalDraft.machineId, onboarded: true, onboardingVersion: CURRENT_ONBOARDING_VERSION, firstPintCompleted: true });
-    setBusy(false);
-    router.replace(`/recipe/${recipe.id}`);
+    try {
+      const recipe = await saveCurrentRecipe();
+      const finalDraft = { ...draft, stage: 'complete' as const, recipeId: recipe.id, photoUri: '' };
+      await updateSettings({ tutorialDraft: finalDraft, machineId: finalDraft.machineId, onboarded: true, onboardingVersion: CURRENT_ONBOARDING_VERSION, firstPintCompleted: true });
+      router.replace(`/recipe/${recipe.id}`);
+    } catch (error) {
+      Alert.alert('Could not save pint', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const stageIndex = TUTORIAL_STAGES.indexOf(draft.stage);
   const nextStage = TUTORIAL_STAGES[Math.min(TUTORIAL_STAGES.length - 1, stageIndex + 1)];
   const previousStage = TUTORIAL_STAGES[Math.max(0, stageIndex - 1)];
-  const blocked = transitioning || busy || (draft.stage === 'base' && draft.baseItems.length === 0) || (draft.stage === 'blend' && validation.errors.length > 0);
+  const blocked = transitioning || busy
+    || (draft.stage === 'base' && draft.baseItems.length === 0)
+    || (draft.stage === 'blend' && validation.errors.length > 0)
+    || (draft.stage === 'evaluate' && !draft.textureResult)
+    || (draft.stage === 'respin' && !draft.finalTextureResult);
   const editorIngredient = editorId ? ingredients.find((ingredient) => ingredient.id === editorId) : undefined;
   const editorItem = editorId ? itemFor(draft, ingredients, editorId) : undefined;
   const editorIds = draft.stage === 'base'
@@ -372,7 +388,7 @@ export default function TutorialScreen() {
     onFit: () => patchDraft({ baseItems: fitTutorialBaseItems(draft, ingredients, machine.capacityMl) }),
     onTakePhoto: () => { void addPintPhoto('camera'); },
     onChoosePhoto: () => { void addPintPhoto('library'); },
-    photoBusy: busy,
+    photoBusy,
   });
 
   return (
@@ -385,14 +401,11 @@ export default function TutorialScreen() {
         capacityMl={machine.capacityMl}
         addition={addition}
         creamyEnabled={settings.creamyHelperEnabled}
-        creamyVisible={settings.tutorialPintVisible}
         editorOpen={Boolean(editorId)}
         onBack={handleBack}
         onNext={handleNext}
         onFreezeNow={() => { void startFreezeTimer(); }}
         onFreezeLater={() => { void freezeLater(); }}
-        onHideCreamy={() => { void updateSettings({ tutorialPintVisible: false }); }}
-        onShowCreamy={() => { void updateSettings({ tutorialPintVisible: true }); }}
       />
     }>
       {!compact ? <Text style={styles.tutorialHeader}>Your first pint</Text> : null}
@@ -472,13 +485,8 @@ function renderStage(props: StageProps) {
   if (draft.stage === 'evaluate') {
     const other = TEXTURE_CHOICES.filter((choice) => choice.id !== 'perfect');
     const open = disclose('texture-options');
-    return <Page icon="eye-outline" eyebrow="FIRST RESULT" title="How did the first spin turn out?" intro="Choose the closest answer. The next page will give you one specific action.">{open ? <><DisclosureButton label="Close texture choices" open onPress={() => onDisclosure('texture-options')} /><SmoothReveal><ChoicePager choices={[...other, TEXTURE_CHOICES[0]]} selected={[draft.textureResult]} compact={compact} recommendedId="perfect" onPress={(id) => onPatch({ textureResult: id as TutorialTextureResult })} /></SmoothReveal></> : <><RecommendationCard title="Looks perfect" detail="Smooth, creamy, and ready to scoop" action={draft.textureResult === 'perfect' ? 'Selected' : 'Choose this'} active={draft.textureResult === 'perfect'} onPress={() => onPatch({ textureResult: 'perfect' })} /><DisclosureButton label="Choose a texture problem" open={false} onPress={() => onDisclosure('texture-options')} /></>}</Page>;
-  }
-
-  if (draft.stage === 'correction') {
-    const guidance = tutorialTextureGuidance[draft.textureResult];
-    const perfect = draft.textureResult === 'perfect';
-    return <Page icon={perfect ? 'check-circle-outline' : 'creation'} eyebrow="YOUR NEXT MOVE" title={perfect ? 'The texture is finished' : 'Try one focused fix'} intro={perfect ? 'Stop processing unless you want to fold in chunks.' : guidance.detail}><GlassCard style={styles.nextCard}><Text style={styles.nextLabel}>{perfect ? 'OPTIONAL NEXT STEP' : 'DO THIS ONCE'}</Text><Text style={styles.nextAction}>{perfect ? 'Choose mix-ins or finish' : guidance.next}</Text></GlassCard><DisclosureButton label="Why this action?" open={disclose('correction-why')} onPress={() => onDisclosure('correction-why')} />{disclose('correction-why') ? <SmoothReveal><Text style={styles.detailText}>{correctionDetail(draft.textureResult)}</Text></SmoothReveal> : null}</Page>;
+    const toggleResult = (id: string) => onPatch({ textureResult: draft.textureResult === id ? null : id as TutorialTextureResult });
+    return <Page icon="eye-outline" eyebrow="FIRST RESULT" title="How did the first spin turn out?" intro="Choose the closest answer. Tap the selected answer again to clear it.">{open ? <><DisclosureButton label="Close texture choices" open onPress={() => onDisclosure('texture-options')} /><SmoothReveal><ChoicePager choices={[...other, TEXTURE_CHOICES[0]]} selected={draft.textureResult ? [draft.textureResult] : []} compact={compact} recommendedId="perfect" onPress={toggleResult} /></SmoothReveal></> : <><RecommendationCard title="Looks perfect" detail="Smooth, creamy, and ready to scoop" action={draft.textureResult === 'perfect' ? 'Selected · tap to clear' : 'Choose this'} active={draft.textureResult === 'perfect'} onPress={() => toggleResult('perfect')} /><DisclosureButton label="Choose a texture problem" open={false} onPress={() => onDisclosure('texture-options')} /></>}</Page>;
   }
 
   if (draft.stage === 'mix-ins') {
@@ -489,12 +497,13 @@ function renderStage(props: StageProps) {
   }
 
   if (draft.stage === 'respin') {
-    const finalGuidance = tutorialTextureGuidance[draft.finalTextureResult];
-    return <Page icon="eye-outline" eyebrow="FINAL TEXTURE CHECK" title="How did it come out?" intro="Choose what you see now. If it still needs help, Creamy Tuner will show a troubleshooting step."><ChoicePager choices={TEXTURE_CHOICES} selected={[draft.finalTextureResult]} compact={compact} recommendedId="perfect" onPress={(id) => onPatch({ finalTextureResult: id as TutorialTextureResult })} />{draft.finalTextureResult !== 'perfect' ? <GlassCard style={styles.troubleshootCard}><Text style={styles.nextLabel}>TRY THIS NEXT</Text><Text style={styles.troubleshootAction}>{finalGuidance.next}</Text><Text style={styles.troubleshootDetail}>{correctionDetail(draft.finalTextureResult)}</Text></GlassCard> : <Text style={styles.perfectNote}>Perfect — stop processing and enjoy it.</Text>}</Page>;
+    const finalGuidance = draft.finalTextureResult ? tutorialTextureGuidance[draft.finalTextureResult] : null;
+    const toggleResult = (id: string) => onPatch({ finalTextureResult: draft.finalTextureResult === id ? null : id as TutorialTextureResult });
+    return <Page icon="eye-outline" eyebrow="FINAL TEXTURE CHECK" title="How did it come out?" intro="Choose what you see now. Tap the selected answer again to clear it."><ChoicePager choices={TEXTURE_CHOICES} selected={draft.finalTextureResult ? [draft.finalTextureResult] : []} compact={compact} recommendedId="perfect" onPress={toggleResult} />{draft.finalTextureResult && draft.finalTextureResult !== 'perfect' && finalGuidance ? <GlassCard style={styles.troubleshootCard}><Text style={styles.nextLabel}>TRY THIS NEXT</Text><Text style={styles.troubleshootAction}>{finalGuidance.next}</Text><Text style={styles.troubleshootDetail}>{correctionDetail(draft.finalTextureResult)}</Text></GlassCard> : draft.finalTextureResult === 'perfect' ? <Text style={styles.perfectNote}>Perfect — stop processing and enjoy it.</Text> : null}</Page>;
   }
 
   const presentation = tutorialRecipePresentation(draft);
-  return <Page icon="party-popper" eyebrow="CONGRATULATIONS!" title="Your pint is complete" intro="Save a photo with the recipe, or continue without one."><View style={styles.photoCard}>{draft.photoUri ? <Image source={{ uri: draft.photoUri }} style={styles.pintPhoto} accessibilityLabel="Your finished pint photo" /> : <LinearGradient colors={['rgba(241,78,155,0.28)', 'rgba(78,217,232,0.16)']} style={styles.photoPlaceholder}><Icon name="camera-plus-outline" size={52} color={palette.white} /><Text style={styles.celebrationTitle}>{presentation.name}</Text></LinearGradient>}<Text style={styles.celebrationCopy}>{draft.photoUri ? 'Photo added to your saved recipe' : props.recipes.some((recipe) => recipe.id === draft.recipeId) ? 'Recipe saved locally' : 'Ready to save locally'}</Text></View><View style={styles.photoActions}><Pressable disabled={photoBusy} onPress={onTakePhoto} accessibilityRole="button" style={styles.photoAction}><Icon name="camera-outline" color={palette.cyan} /><Text style={styles.photoActionText}>{draft.photoUri ? 'Retake' : 'Take photo'}</Text></Pressable><Pressable disabled={photoBusy} onPress={onChoosePhoto} accessibilityRole="button" style={styles.photoAction}><Icon name="image-outline" color={palette.lavender} /><Text style={styles.photoActionText}>Choose photo</Text></Pressable></View></Page>;
+  return <Page icon="party-popper" eyebrow="CONGRATULATIONS!" title="Your pint is complete" intro="Save a photo with the recipe, or continue without one."><View style={styles.photoCard}>{draft.photoUri ? <Image source={{ uri: draft.photoUri }} style={styles.pintPhoto} accessibilityLabel="Your finished pint photo" /> : <LinearGradient colors={['rgba(241,78,155,0.28)', 'rgba(78,217,232,0.16)']} style={styles.photoPlaceholder}>{photoBusy ? <ActivityIndicator color={palette.cyan} size="large" /> : <Icon name="camera-plus-outline" size={52} color={palette.white} />}<Text style={styles.celebrationTitle}>{photoBusy ? 'Preparing photo…' : presentation.name}</Text></LinearGradient>}<Text style={styles.celebrationCopy}>{photoBusy ? 'Compressing and saving your photo' : draft.photoUri ? 'Photo added to your saved recipe' : props.recipes.some((recipe) => recipe.id === draft.recipeId) ? 'Recipe saved locally' : 'Ready to save locally'}</Text></View><View style={styles.photoActions}><Pressable disabled={photoBusy} onPress={onTakePhoto} accessibilityRole="button" style={[styles.photoAction, photoBusy && styles.disabled]}><Icon name="camera-outline" color={palette.cyan} /><Text style={styles.photoActionText}>{photoBusy ? 'Adding…' : draft.photoUri ? 'Retake' : 'Take photo'}</Text></Pressable><Pressable disabled={photoBusy} onPress={onChoosePhoto} accessibilityRole="button" style={[styles.photoAction, photoBusy && styles.disabled]}><Icon name="image-outline" color={palette.lavender} /><Text style={styles.photoActionText}>{photoBusy ? 'Please wait' : 'Choose photo'}</Text></Pressable></View></Page>;
 }
 
 function IngredientStage({ draft, compact, title, eyebrow, intro, recommendedId, recommendedTitle, recommendedDetail, choices, group, kind, ingredients, onToggle, onEdit, onDisclosure }: {
@@ -564,10 +573,10 @@ function TutorialProgress({ stage }: { stage: TutorialStage }) {
   return <View style={styles.progress}><View style={styles.progressTop}><Text style={styles.progressPhase}>{phase}</Text><Text style={styles.progressCount}>{index + 1} of {TUTORIAL_STAGES.length}</Text></View><View style={styles.dots}>{TUTORIAL_STAGES.map((value, dotIndex) => <View key={value} style={[styles.dot, dotIndex <= index && styles.dotActive]} />)}</View></View>;
 }
 
-function TutorialFooter({ stage, busy, disabled, amountMl, capacityMl, addition, creamyEnabled, creamyVisible, editorOpen, onBack, onNext, onFreezeNow, onFreezeLater, onHideCreamy, onShowCreamy }: { stage: TutorialStage; busy: boolean; disabled: boolean; amountMl: number; capacityMl: number; addition: TutorialAddition; creamyEnabled: boolean; creamyVisible: boolean; editorOpen: boolean; onBack: () => void; onNext: () => void; onFreezeNow: () => void; onFreezeLater: () => void; onHideCreamy: () => void; onShowCreamy: () => void }) {
+function TutorialFooter({ stage, busy, disabled, amountMl, capacityMl, addition, creamyEnabled, editorOpen, onBack, onNext, onFreezeNow, onFreezeLater }: { stage: TutorialStage; busy: boolean; disabled: boolean; amountMl: number; capacityMl: number; addition: TutorialAddition; creamyEnabled: boolean; editorOpen: boolean; onBack: () => void; onNext: () => void; onFreezeNow: () => void; onFreezeLater: () => void }) {
   const title = editorOpen ? 'Done' : stage === 'base' && disabled ? 'Choose base' : stage === 'blend' && disabled ? 'Fix fill' : stage === 'freeze' ? busy ? 'Starting…' : 'Start timer' : stage === 'complete' ? busy ? 'Saving…' : 'Save pint' : 'Continue';
   const primaryAction = stage === 'freeze' ? onFreezeNow : onNext;
-  return <SafeAreaView edges={['bottom']} style={styles.footerSafe}><View style={styles.footer}>{stage === 'freeze' ? <GradientButton title="I’ll come back later" variant="secondary" disabled={busy} onPress={onFreezeLater} /> : null}<View style={styles.footerRow}><View style={styles.footerSide}><Pressable onPress={onBack} disabled={busy} accessibilityRole="button" accessibilityLabel="Previous tutorial page" style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}><Icon name="arrow-left" /><Text style={styles.backText}>Back</Text></Pressable></View>{creamyEnabled ? creamyVisible ? <FooterCreamy amountMl={amountMl} capacityMl={capacityMl} addition={addition} onHide={onHideCreamy} /> : <Pressable onPress={onShowCreamy} style={styles.showCreamy} accessibilityRole="button" accessibilityLabel="Show Creamy fill helper"><Icon name="cup-outline" size={31} color={palette.cyan} /><Text style={styles.showCreamyText}>Creamy</Text></Pressable> : <View style={styles.mascotSpacer} />}<View style={styles.footerSide}><GradientButton title={title} icon={stage === 'freeze' ? 'timer-outline' : stage === 'complete' ? 'check' : 'arrow-right'} disabled={disabled} onPress={primaryAction} /></View></View></View></SafeAreaView>;
+  return <SafeAreaView edges={['bottom']} style={styles.footerSafe}><View style={styles.footer}>{stage === 'freeze' ? <GradientButton title="I’ll come back later" variant="secondary" disabled={busy} onPress={onFreezeLater} /> : null}<View style={styles.footerRow}><View style={styles.footerSide}><Pressable onPress={onBack} disabled={busy} accessibilityRole="button" accessibilityLabel="Previous tutorial page" style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}><Icon name="arrow-left" /><Text style={styles.backText}>Back</Text></Pressable></View>{creamyEnabled ? <FooterCreamy amountMl={amountMl} capacityMl={capacityMl} addition={addition} /> : <View style={styles.mascotSpacer} />}<View style={styles.footerSide}><GradientButton title={title} icon={stage === 'freeze' ? 'timer-outline' : stage === 'complete' ? 'check' : 'arrow-right'} disabled={disabled} onPress={primaryAction} /></View></View></View></SafeAreaView>;
 }
 
 function selectedFrom(draft: TutorialDraft, ids: string[]) { return ids.filter((id) => draft.selectedIngredientIds.includes(id)); }
@@ -710,9 +719,7 @@ const styles = StyleSheet.create({
   programCompact: { minHeight: 72, padding: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderColor: 'rgba(241,78,155,0.42)' },
   programIconSmall: { width: 46, height: 46, borderRadius: 15, backgroundColor: 'rgba(241,78,155,0.15)', alignItems: 'center', justifyContent: 'center' },
   readyNote: { color: palette.cyan, fontSize: 14, lineHeight: 20, fontWeight: '900', textAlign: 'center' },
-  nextCard: { minHeight: 150, padding: spacing.lg, alignItems: 'center', justifyContent: 'center', borderColor: 'rgba(78,217,232,0.42)' },
   nextLabel: { color: palette.cyan, fontSize: 13, lineHeight: 18, fontWeight: '900', letterSpacing: 0.8 },
-  nextAction: { color: palette.text, fontSize: 30, lineHeight: 36, fontWeight: '900', textAlign: 'center', marginTop: spacing.xs },
   respinText: { color: palette.text, fontSize: 20, lineHeight: 26, fontWeight: '900', textAlign: 'center', marginTop: spacing.sm },
   mixInstruction: { minHeight: 50, borderRadius: radii.md, borderWidth: 1, borderColor: 'rgba(78,217,232,0.35)', backgroundColor: 'rgba(78,217,232,0.08)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingHorizontal: spacing.sm },
   mixInstructionText: { color: palette.text, fontSize: 14, lineHeight: 19, fontWeight: '900', textAlign: 'center' },
@@ -740,7 +747,5 @@ const styles = StyleSheet.create({
   footerSide: { flex: 1, minWidth: 0 },
   backButton: { width: '100%', minHeight: 52, borderRadius: radii.pill, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.panelRaised, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
   backText: { color: palette.text, fontSize: 15, fontWeight: '900' },
-  showCreamy: { width: 82, minHeight: 100, alignItems: 'center', justifyContent: 'center' },
-  showCreamyText: { color: palette.cyan, fontSize: 11, fontWeight: '900', marginTop: 3 },
   mascotSpacer: { width: 82, minHeight: 100 },
 });

@@ -15,7 +15,6 @@ export async function choosePintPhoto(source: PintPhotoSource): Promise<string |
     allowsEditing: Platform.OS !== 'web',
     aspect: [1, 1],
     quality: 0.75,
-    base64: Platform.OS === 'web',
   };
   const result = source === 'camera'
     ? await ImagePicker.launchCameraAsync(options)
@@ -24,7 +23,7 @@ export async function choosePintPhoto(source: PintPhotoSource): Promise<string |
 
   const asset = result.assets[0];
   if (Platform.OS === 'web') {
-    return asset.base64 ? `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}` : asset.uri;
+    return compressWebPhoto(asset);
   }
 
   const directory = new Directory(Paths.document, 'pint-photos');
@@ -33,6 +32,48 @@ export async function choosePintPhoto(source: PintPhotoSource): Promise<string |
   const destination = new File(directory, `pint-${Date.now()}${extension}`);
   new File(asset.uri).copy(destination);
   return destination.uri;
+}
+
+async function compressWebPhoto(asset: ImagePicker.ImagePickerAsset) {
+  const objectUrl = asset.file ? URL.createObjectURL(asset.file) : null;
+  const source = objectUrl ?? asset.uri;
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new window.Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error('The selected photo could not be read.'));
+      element.src = source;
+    });
+    const cropSize = Math.min(image.naturalWidth, image.naturalHeight);
+    const outputSize = Math.min(640, cropSize);
+    const canvas = document.createElement('canvas');
+    canvas.width = outputSize;
+    canvas.height = outputSize;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('The selected photo could not be prepared.');
+    context.drawImage(
+      image,
+      (image.naturalWidth - cropSize) / 2,
+      (image.naturalHeight - cropSize) / 2,
+      cropSize,
+      cropSize,
+      0,
+      0,
+      outputSize,
+      outputSize,
+    );
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((value) => value ? resolve(value) : reject(new Error('The selected photo could not be compressed.')), 'image/jpeg', 0.72);
+    });
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('The selected photo could not be saved.'));
+      reader.onerror = () => reject(new Error('The selected photo could not be saved.'));
+      reader.readAsDataURL(blob);
+    });
+  } finally {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }
 }
 
 function fileExtension(fileName?: string | null, mimeType?: string | null) {

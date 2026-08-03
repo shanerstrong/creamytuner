@@ -143,24 +143,25 @@ export const tutorialStageSchema = z.enum([
   'freeze',
   'first-spin',
   'evaluate',
-  'correction',
   'mix-ins',
   'respin',
   'complete',
 ]);
+const persistedTutorialStageSchema = z.union([tutorialStageSchema, z.literal('correction')])
+  .transform((stage) => stage === 'correction' ? 'mix-ins' as const : stage);
 
 const tutorialDraftV3Schema = z.object({
   version: z.literal(3).default(3),
   flowVersion: z.number().int().nonnegative().default(0),
-  stage: tutorialStageSchema.default('machine'),
+  stage: persistedTutorialStageSchema.default('machine'),
   machineId: z.string().default('nc501'),
   baseItems: z.array(recipeIngredientSchema).default([]),
   selectedIngredientIds: z.array(z.string()).default([]),
   itemAmounts: z.record(z.string(), z.number().positive()).default({}),
   manualAmountIds: z.array(z.string()).default([]),
   mixInId: z.string().nullable().default(null),
-  textureResult: tutorialTextureResultSchema.default('perfect'),
-  finalTextureResult: tutorialTextureResultSchema.default('perfect'),
+  textureResult: tutorialTextureResultSchema.nullable().default(null),
+  finalTextureResult: tutorialTextureResultSchema.nullable().default(null),
   spinMinutes: z.number().int().min(1).max(10).default(2),
   photoUri: z.string().default(''),
   recipeId: z.string().default(''),
@@ -189,7 +190,7 @@ const legacyTutorialDraftSchema = z.object({
   recipeId: z.string().default(''),
 });
 
-const legacyTutorialStages = ['machine', 'base', 'helper', 'sweetener', 'flavor', 'blend', 'freeze', 'first-spin', 'evaluate', 'correction', 'complete'] as const;
+const legacyTutorialStages = ['machine', 'base', 'helper', 'sweetener', 'flavor', 'blend', 'freeze', 'first-spin', 'evaluate', 'mix-ins', 'complete'] as const;
 
 export const tutorialDraftSchema = z.union([tutorialDraftV3Schema, legacyTutorialDraftSchema]).transform((draft) => {
   if (draft.version === 3) return draft;
@@ -246,8 +247,8 @@ export const userSettingsSchema = z.object({
     itemAmounts: {},
     manualAmountIds: [],
     mixInId: null,
-    textureResult: 'perfect',
-    finalTextureResult: 'perfect',
+    textureResult: null,
+    finalTextureResult: null,
     spinMinutes: 2,
     photoUri: '',
     recipeId: '',
