@@ -11,8 +11,12 @@ export type TutorialAddition = { kind: 'liquid' | 'fruit' | 'spoon' | 'mix-in'; 
 const ATLAS = require('../../../assets/images/mascot/creamy-fill-progress.png');
 const CELL_WIDTH = 84;
 const CELL_HEIGHT = 92;
-const CROP_X = 4;
-const CROP_Y = 4;
+// The source atlas is a numbered 8-up storyboard. Start inside each cell so
+// the storyboard number and divider never leak into the live mascot crop.
+const CROP_X = 16;
+const CROP_Y = 18;
+const CROP_WIDTH = 68;
+const CROP_HEIGHT = 74;
 
 export function FooterCreamy({ amountMl, capacityMl, addition }: { amountMl: number; capacityMl: number; addition: TutorialAddition }) {
   const fill = getPintFillState(amountMl, capacityMl);
@@ -46,7 +50,7 @@ export function FooterCreamy({ amountMl, capacityMl, addition }: { amountMl: num
 
 const styles = StyleSheet.create({
   slot: { width: 82, minHeight: 100, alignItems: 'center', justifyContent: 'flex-end' },
-  crop: { width: 76, height: 86, overflow: 'hidden', borderRadius: 17, borderWidth: 1, borderColor: 'rgba(78,217,232,0.5)', backgroundColor: palette.ink, ...shadows.glow },
+  crop: { width: CROP_WIDTH, height: CROP_HEIGHT, overflow: 'hidden', borderRadius: 17, borderWidth: 1, borderColor: 'rgba(78,217,232,0.5)', backgroundColor: palette.ink, ...shadows.glow },
   atlas: { position: 'absolute', left: 0, top: 0, width: CELL_WIDTH * 4, height: CELL_HEIGHT * 2 },
   percent: { color: palette.cyan, fontSize: 10, lineHeight: 13, fontWeight: '900', marginTop: 2, letterSpacing: 0.3 },
   danger: { color: palette.danger },

@@ -1,4 +1,4 @@
-import { router, Tabs } from 'expo-router';
+import { router, Tabs, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
 
 import { Icon, LoadingScreen, type IconName } from '@/src/components/ui';
@@ -7,11 +7,13 @@ import { useApp } from '@/src/providers/app-provider';
 
 export default function TabLayout() {
   const { ready, settings } = useApp();
+  const { tutorial } = useLocalSearchParams<{ tutorial?: string }>();
   const tutorialComplete = settings.onboarded && settings.onboardingVersion >= CURRENT_ONBOARDING_VERSION;
+  const tutorialPicker = tutorial === '1';
   useEffect(() => {
-    if (ready && !tutorialComplete) router.replace('/');
-  }, [ready, tutorialComplete]);
-  if (!ready || !tutorialComplete) return <LoadingScreen />;
+    if (ready && !tutorialComplete && !tutorialPicker) router.replace('/');
+  }, [ready, tutorialComplete, tutorialPicker]);
+  if (!ready || (!tutorialComplete && !tutorialPicker)) return <LoadingScreen />;
   return (
     <Tabs
       tabBar={() => null}
