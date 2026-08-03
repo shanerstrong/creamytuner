@@ -24,6 +24,7 @@ export const gradients = {
   primary: ['#D62CB4', '#F2578A'] as const,
   primaryPressed: ['#B8229C', '#D94176'] as const,
   card: ['rgba(43, 55, 91, 0.96)', 'rgba(22, 31, 59, 0.96)'] as const,
+  cardAction: ['rgba(55, 70, 111, 0.98)', 'rgba(30, 42, 76, 0.98)'] as const,
   cardWarm: ['rgba(83, 50, 101, 0.95)', 'rgba(30, 35, 67, 0.96)'] as const,
   cardCool: ['rgba(25, 72, 105, 0.9)', 'rgba(24, 34, 66, 0.96)'] as const,
 } as const;

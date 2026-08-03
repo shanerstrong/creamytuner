@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader, EmptyState, GlassCard, Icon, IconButton, Pill, Screen, SearchField, type IconName } from '@/src/components/ui';
 import { ingredientCategoryLabels } from '@/src/data/ingredients';
@@ -27,7 +27,6 @@ function IngredientItem({ ingredient, grid }: { ingredient: Ingredient; grid: bo
           <Text style={styles.meta}>{ingredient.brand || ingredient.subtitle || ingredientCategoryLabels[ingredient.category]}</Text>
           <Text style={styles.benefit}>{Math.round(ingredient.nutrition.calories)} cal · {Number(ingredient.nutrition.protein.toFixed(1))} g protein</Text>
         </View>
-        {!grid ? <Icon name="chevron-right" color={palette.textFaint} /> : null}
       </View>
     </GlassCard>
   );
@@ -57,12 +56,21 @@ export default function IngredientLibraryScreen() {
     <Screen>
       <AppHeader title="Ingredient Library" subtitle={`${ingredients.length} offline references`} right={<IconButton icon="plus" label="Add custom ingredient" onPress={() => router.push('/ingredient-new')} />} />
       <SearchField value={query} onChangeText={setQuery} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>{categories.map((item) => <Pill key={item.id} label={item.label} active={category === item.id} onPress={() => setCategory(item.id)} />)}</ScrollView>
-      <View style={styles.toolbar}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sortScroller} contentContainerStyle={styles.sortRow}>{sorts.map((item) => <Pill key={item.id} label={item.label} active={sort === item.id} onPress={() => setSort(item.id)} />)}</ScrollView>
-        <View style={styles.viewToggle} accessibilityRole="radiogroup">
-          <Pressable onPress={() => updateSettings({ ingredientLibraryView: 'list' })} style={[styles.viewButton, !grid && styles.viewButtonActive]} accessibilityRole="radio" accessibilityState={{ selected: !grid }} accessibilityLabel="List view"><Icon name="view-list" size={21} color={!grid ? palette.text : palette.textMuted} /></Pressable>
-          <Pressable onPress={() => updateSettings({ ingredientLibraryView: 'grid' })} style={[styles.viewButton, grid && styles.viewButtonActive]} accessibilityRole="radio" accessibilityState={{ selected: grid }} accessibilityLabel="Grid view"><Icon name="view-grid" size={21} color={grid ? palette.text : palette.textMuted} /></Pressable>
+      <View style={styles.filterSection}>
+        <Text style={styles.controlLabel}>FILTER BY</Text>
+        <View style={styles.filterRow}>{categories.map((item) => <Pill key={item.id} label={item.label} active={category === item.id} onPress={() => setCategory(item.id)} />)}</View>
+      </View>
+      <View style={styles.controls}>
+        <View style={styles.sortBlock}>
+          <Text style={styles.controlLabel}>SORT BY</Text>
+          <View style={styles.sortRow}>{sorts.map((item) => <Pill key={item.id} label={item.label} active={sort === item.id} onPress={() => setSort(item.id)} />)}</View>
+        </View>
+        <View>
+          <Text style={styles.controlLabel}>VIEW</Text>
+          <View style={styles.viewToggle} accessibilityRole="radiogroup">
+            <Pressable onPress={() => updateSettings({ ingredientLibraryView: 'list' })} style={[styles.viewButton, !grid && styles.viewButtonActive]} accessibilityRole="radio" accessibilityState={{ selected: !grid }} accessibilityLabel="List view"><Icon name="view-list" size={21} color={!grid ? palette.text : palette.textMuted} /></Pressable>
+            <Pressable onPress={() => updateSettings({ ingredientLibraryView: 'grid' })} style={[styles.viewButton, grid && styles.viewButtonActive]} accessibilityRole="radio" accessibilityState={{ selected: grid }} accessibilityLabel="Grid view"><Icon name="view-grid" size={21} color={grid ? palette.text : palette.textMuted} /></Pressable>
+          </View>
         </View>
       </View>
       {!filtered.length ? <EmptyState icon="magnify-close" title="No ingredients found" message="Try another search or clear a category filter." action="Clear filters" onAction={() => { setQuery(''); setCategory('all'); }} /> : null}
@@ -74,10 +82,12 @@ export default function IngredientLibraryScreen() {
 }
 
 const styles = StyleSheet.create({
-  filterRow: { gap: spacing.xs, paddingVertical: spacing.md, paddingRight: spacing.md },
-  toolbar: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.md },
-  sortScroller: { flex: 1 },
-  sortRow: { gap: spacing.xs, paddingRight: spacing.sm },
+  filterSection: { marginTop: spacing.md },
+  controlLabel: { color: palette.textFaint, fontSize: 13, lineHeight: 18, fontWeight: '900', letterSpacing: 0.8, marginBottom: spacing.xs },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  controls: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, marginTop: spacing.md, marginBottom: spacing.md },
+  sortBlock: { flex: 1 },
+  sortRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   viewToggle: { flexDirection: 'row', borderWidth: 1, borderColor: palette.border, borderRadius: radii.md, overflow: 'hidden' },
   viewButton: { width: 46, height: 46, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.panelSoft },
   viewButtonActive: { backgroundColor: palette.panelRaised },

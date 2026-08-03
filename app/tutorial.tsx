@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useReducedMotion } from 'react-native-reanimated';
 
@@ -13,7 +13,7 @@ import { CURRENT_ONBOARDING_VERSION, TUTORIAL_STEP_COUNT, fitTutorialBaseAmount,
 import { useApp } from '@/src/providers/app-provider';
 import { scheduleFreezeReminder } from '@/src/services/freeze-reminder';
 import { palette, radii, spacing } from '@/src/theme';
-import type { Recipe, TutorialDraft, TutorialTextureResult, UserSettings } from '@/src/types';
+import { tutorialDraftSchema, type Recipe, type TutorialDraft, type TutorialTextureResult, type UserSettings } from '@/src/types';
 
 type Choice = { id: string; title: string; detail: string; icon: IconName };
 
@@ -56,7 +56,9 @@ const textureChoices: { id: TutorialTextureResult; title: string; detail: string
 
 export default function TutorialScreen() {
   const { ready, ingredients, recipes, settings, saveRecipe, updateSettings } = useApp();
-  const [draft, setDraft] = useState<TutorialDraft>(settings.tutorialDraft);
+  const [draft, setDraft] = useState<TutorialDraft>(() => settings.tutorialDraft.flowVersion < CURRENT_ONBOARDING_VERSION
+    ? tutorialDraftSchema.parse({ machineId: settings.machineId, flowVersion: CURRENT_ONBOARDING_VERSION })
+    : settings.tutorialDraft);
   const [transitioning, setTransitioning] = useState(false);
   const [busy, setBusy] = useState(false);
   const [timerMessage, setTimerMessage] = useState('');
@@ -67,17 +69,21 @@ export default function TutorialScreen() {
 
   useEffect(() => {
     if (ready && !initialized.current) {
-      setDraft(settings.tutorialDraft);
+      const initialDraft = settings.tutorialDraft.flowVersion < CURRENT_ONBOARDING_VERSION
+        ? tutorialDraftSchema.parse({ machineId: settings.machineId, flowVersion: CURRENT_ONBOARDING_VERSION })
+        : settings.tutorialDraft;
+      setDraft(initialDraft);
+      if (settings.tutorialDraft.flowVersion < CURRENT_ONBOARDING_VERSION) void updateSettings({ tutorialDraft: initialDraft });
       initialized.current = true;
     }
-  }, [ready, settings.tutorialDraft]);
+  }, [ready, settings.machineId, settings.tutorialDraft, updateSettings]);
 
   const machine = machineById(draft.machineId);
   const items = useMemo(() => tutorialItems(draft, ingredients), [draft, ingredients]);
   const validation = useMemo(() => validateRecipe(items, ingredients, machine.id), [ingredients, items, machine.id]);
   const previewRecipe = useMemo(() => generateTutorialRecipe(draft, items, ingredients), [draft, ingredients, items]);
   const program = useMemo(() => recommendProgram(previewRecipe, machine.id), [machine.id, previewRecipe]);
-  const showMiniPint = draft.step >= 1 && draft.step <= 6;
+  const showMiniPint = draft.step >= 0 && draft.step <= 6;
 
   if (!ready) return <LoadingScreen />;
 
@@ -100,7 +106,7 @@ export default function TutorialScreen() {
         slide.setValue(0);
         setTransitioning(false);
       } else {
-        Animated.timing(slide, { toValue: 0, duration: 260, useNativeDriver: true }).start(() => setTransitioning(false));
+        Animated.timing(slide, { toValue: 0, duration: 260, useNativeDriver: Platform.OS !== 'web' }).start(() => setTransitioning(false));
       }
     };
     if (reducedMotion) {
@@ -108,7 +114,7 @@ export default function TutorialScreen() {
       return;
     }
     setTransitioning(true);
-    Animated.timing(slide, { toValue: -direction * Math.min(width, 560), duration: 190, useNativeDriver: true }).start(commit);
+    Animated.timing(slide, { toValue: -direction * Math.min(width, 560), duration: 190, useNativeDriver: Platform.OS !== 'web' }).start(commit);
   };
 
   const saveCurrentRecipe = async (sourceDraft = draft) => {
@@ -160,7 +166,7 @@ export default function TutorialScreen() {
 
   const fitPint = () => changeDraft({ baseAmountMl: fitTutorialBaseAmount(draft, ingredients, machine.capacityMl) });
   const page = renderTutorialPage({ draft, changeDraft, items, ingredients, validation, machine, program, timerMessage, recipes });
-  const nextDisabled = transitioning || busy || (draft.step === 5 && validation.errors.length > 0);
+  const nextDisabled = transitioning || busy || (draft.step === 1 && !draft.baseAdded) || (draft.step === 5 && validation.errors.length > 0);
 
   return (
     <View style={styles.shell}>
@@ -182,7 +188,7 @@ export default function TutorialScreen() {
         {draft.step === 5 && validation.errors.length ? <GradientButton title="Fit this container" icon="arrow-collapse" onPress={fitPint} /> : null}
         {draft.step === 10 && draft.textureResult !== 'perfect' ? <GradientButton title="Open the matching fix" variant="secondary" icon="wrench-outline" onPress={() => { void finishTutorial(true); }} /> : null}
       </Screen>
-      {showMiniPint ? <MiniPintOverlay amountMl={validation.estimatedVolumeMl} capacityMl={machine.capacityMl} visible={settings.tutorialPintVisible} onToggle={() => void updateSettings({ tutorialPintVisible: !settings.tutorialPintVisible })} /> : null}
+      {showMiniPint && settings.creamyHelperEnabled ? <View pointerEvents="box-none" style={styles.creamyLayer}><View pointerEvents="box-none" style={styles.creamyBounds}><MiniPintOverlay amountMl={validation.estimatedVolumeMl} capacityMl={machine.capacityMl} visible={settings.tutorialPintVisible} position={settings.creamyPosition} onToggle={() => void updateSettings({ tutorialPintVisible: !settings.tutorialPintVisible })} onPositionChange={(creamyPosition) => void updateSettings({ creamyPosition })} /></View></View> : null}
     </View>
   );
 }
@@ -203,7 +209,7 @@ function renderTutorialPage({ draft, changeDraft, items, ingredients, validation
     case 0:
       return <Page icon="cup" eyebrow="STEP 1" title="Which machine do you have?" intro="This keeps fill limits and program names accurate."><View style={styles.machineGrid}>{machines.map((choice) => <ChoiceCard key={choice.id} id={choice.id} title={choice.shortName} detail={choice.subtitle} icon={choice.familyId === 'nc700' ? 'ice-cream' : 'cup'} active={choice.id === draft.machineId} onPress={() => changeDraft({ machineId: choice.id })} compact />)}</View></Page>;
     case 1:
-      return <Page icon="cup-water" eyebrow="BUILD THE BASE" title="Start with one base" intro="The base supplies most of the liquid. You can change exact amounts later."><ChoiceList choices={baseChoices} value={draft.baseId} onChange={(baseId) => { const ingredient = ingredients.find((candidate) => candidate.id === baseId); changeDraft({ baseId, baseAmountMl: ingredient?.defaultUnit === 'ml' ? ingredient.defaultAmount : 300 }); }} /><GlassCard style={styles.optionalCard} onPress={() => changeDraft({ proteinId: draft.proteinId ? null : 'whey-vanilla' })} accessibilityLabel={draft.proteinId ? 'Remove optional protein powder' : 'Add optional protein powder'}><View style={styles.optionalRow}><Icon name="arm-flex" color={palette.cyan} /><View style={styles.flex}><Text style={styles.optionalTitle}>Add vanilla protein powder?</Text><Text style={styles.optionalText}>{draft.proteinId ? 'Included — tap to remove' : 'Optional — tap to add one measured scoop'}</Text></View><Icon name={draft.proteinId ? 'check-circle' : 'plus-circle-outline'} color={draft.proteinId ? palette.success : palette.textMuted} /></View></GlassCard></Page>;
+      return <Page icon="cup-water" eyebrow="BUILD THE BASE" title="Start with one base" intro="Creamy starts empty. Pick a base and watch him fill as each ingredient is added."><ChoiceList choices={baseChoices} value={draft.baseAdded ? draft.baseId : ''} onChange={(baseId) => { const ingredient = ingredients.find((candidate) => candidate.id === baseId); changeDraft({ baseId, baseAdded: true, baseAmountMl: ingredient?.defaultUnit === 'ml' ? ingredient.defaultAmount : 300 }); }} /><GlassCard style={styles.optionalCard} onPress={() => changeDraft({ proteinId: draft.proteinId ? null : 'whey-vanilla' })} accessibilityLabel={draft.proteinId ? 'Remove optional protein powder' : 'Add optional protein powder'}><View style={styles.optionalRow}><Icon name="arm-flex" color={palette.cyan} /><View style={styles.flex}><Text style={styles.optionalTitle}>Add vanilla protein powder?</Text><Text style={styles.optionalText}>{draft.proteinId ? 'Included — tap to remove' : 'Optional — tap to add one measured scoop'}</Text></View><Icon name={draft.proteinId ? 'check-circle' : 'plus-circle-outline'} color={draft.proteinId ? palette.success : palette.textMuted} /></View></GlassCard></Page>;
     case 2:
       return <Page icon="cup" eyebrow="BUILD TEXTURE" title="Choose a texture helper" intro="Pudding mix and gums are optional. More is not better—use the measured amount."><ChoiceList choices={helperChoices} value={draft.helperId ?? 'none-helper'} onChange={(id) => changeDraft({ helperId: helperChoices.find((choice) => choice.id === id)?.value ?? null })} /></Page>;
     case 3:
@@ -277,11 +283,14 @@ function InfoCard({ number, title, detail, tone = 'default' }: { number: string;
 }
 
 function TutorialFooter({ step, busy, disabled, onBack, onNext, onFreezeNow, onFreezeLater, onFinish }: { step: number; busy: boolean; disabled: boolean; onBack: () => void; onNext: () => void; onFreezeNow: () => void; onFreezeLater: () => void; onFinish: () => void }) {
-  return <SafeAreaView edges={['bottom']} style={styles.footerSafe}><View style={styles.footer}>{step === 6 ? <><GradientButton title={busy ? 'Starting…' : 'It is in the freezer — start 24h timer'} icon="timer-outline" disabled={disabled} onPress={onFreezeNow} /><GradientButton title="I’ll come back later" variant="secondary" disabled={busy} onPress={onFreezeLater} /></> : step === 10 ? <GradientButton title={busy ? 'Saving…' : 'Finish tutorial'} icon="arrow-right" disabled={busy} onPress={onFinish} /> : <View style={styles.footerRow}><Pressable onPress={onBack} accessibilityRole="button" accessibilityLabel="Previous tutorial page" style={styles.backButton}><Icon name="arrow-left" /><Text style={styles.backText}>Back</Text></Pressable><View style={styles.nextWrap}><GradientButton title={step === 5 && disabled ? 'Fix fill first' : 'Continue'} icon="arrow-right" disabled={disabled} onPress={onNext} /></View></View>}</View></SafeAreaView>;
+  const nextTitle = step === 1 && disabled ? 'Pick a base' : step === 5 && disabled ? 'Fix fill first' : 'Continue';
+  return <SafeAreaView edges={['bottom']} style={styles.footerSafe}><View style={styles.footer}>{step === 6 ? <><GradientButton title={busy ? 'Starting…' : 'It is in the freezer — start 24h timer'} icon="timer-outline" disabled={disabled} onPress={onFreezeNow} /><GradientButton title="I’ll come back later" variant="secondary" disabled={busy} onPress={onFreezeLater} /></> : step === 10 ? <GradientButton title={busy ? 'Saving…' : 'Finish tutorial'} icon="arrow-right" disabled={busy} onPress={onFinish} /> : <View style={styles.footerRow}><Pressable onPress={onBack} accessibilityRole="button" accessibilityLabel="Previous tutorial page" style={styles.backButton}><Icon name="arrow-left" /><Text style={styles.backText}>Back</Text></Pressable><View style={styles.nextWrap}><GradientButton title={nextTitle} icon="arrow-right" disabled={disabled} onPress={onNext} /></View></View>}</View></SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
   shell: { flex: 1, backgroundColor: palette.ink }, content: { paddingBottom: spacing.lg },
+  creamyLayer: { ...StyleSheet.absoluteFillObject, zIndex: 45, alignItems: 'center' },
+  creamyBounds: { flex: 1, width: '100%', maxWidth: 560 },
   progress: { marginBottom: spacing.lg }, progressTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, progressLabel: { color: palette.lavender, fontSize: 13, lineHeight: 18, fontWeight: '900', letterSpacing: 0.7 }, progressCount: { color: palette.textMuted, fontSize: 14, lineHeight: 20, fontWeight: '800' }, progressTrack: { height: 7, borderRadius: 4, backgroundColor: palette.panelRaised, marginTop: spacing.xs, overflow: 'hidden' }, progressFill: { height: '100%', borderRadius: 4, backgroundColor: palette.pink },
   pageIcon: { width: 58, height: 58, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(241,78,155,0.14)', marginBottom: spacing.sm }, eyebrow: { color: palette.cyan, fontSize: 13, lineHeight: 18, fontWeight: '900', letterSpacing: 0.8 }, title: { color: palette.text, fontSize: 29, lineHeight: 35, fontWeight: '900', marginTop: 3 }, intro: { color: palette.textMuted, fontSize: 16, lineHeight: 24, marginTop: spacing.xs }, pageBody: { gap: spacing.sm, marginTop: spacing.lg, paddingBottom: spacing.md },
   machineGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }, choiceList: { gap: spacing.sm }, choice: { minHeight: 78, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radii.md, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.panelSoft, padding: spacing.sm }, choiceCompact: { width: '48.3%', minHeight: 128, flexDirection: 'column', alignItems: 'flex-start' }, choiceActive: { borderColor: palette.pink, borderWidth: 2, backgroundColor: 'rgba(241,78,155,0.12)' }, choiceIcon: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(174,134,255,0.12)' }, choiceIconActive: { backgroundColor: 'rgba(241,78,155,0.15)' }, choiceTitle: { color: palette.text, fontSize: 17, lineHeight: 22, fontWeight: '900' }, choiceDetail: { color: palette.textMuted, fontSize: 14, lineHeight: 20, marginTop: 2 }, pressed: { opacity: 0.78, transform: [{ scale: 0.99 }] }, flex: { flex: 1 },

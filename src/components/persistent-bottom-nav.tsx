@@ -12,15 +12,15 @@ const destinations: { id: string; label: string; href: string; icon: IconName; a
   { id: 'home', label: 'Home', href: '/(tabs)/home', icon: 'home-variant-outline', activeIcon: 'home-variant' },
   { id: 'recipes', label: 'Recipes', href: '/(tabs)/recipes', icon: 'silverware-fork-knife', activeIcon: 'silverware-fork-knife' },
   { id: 'library', label: 'Library', href: '/(tabs)/library', icon: 'bookshelf', activeIcon: 'bookshelf' },
-  { id: 'spin', label: 'Live Spin', href: '/(tabs)/spin', icon: 'record-circle-outline', activeIcon: 'record-circle' },
+  { id: 'settings', label: 'Settings', href: '/settings', icon: 'cog-outline', activeIcon: 'cog' },
   { id: 'profile', label: 'Profile', href: '/(tabs)/profile', icon: 'account-outline', activeIcon: 'account' },
 ];
 
 function activeDestination(pathname: string) {
   if (/^\/recipe(?:s|\/)/.test(pathname)) return 'recipes';
   if (/^\/ingredient(?:-new|\/)|^\/library/.test(pathname)) return 'library';
-  if (/^\/spin/.test(pathname)) return 'spin';
-  if (/^\/(?:profile|settings|machines)/.test(pathname)) return 'profile';
+  if (/^\/(?:settings|machines)/.test(pathname)) return 'settings';
+  if (/^\/profile/.test(pathname)) return 'profile';
   return 'home';
 }
 

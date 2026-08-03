@@ -28,6 +28,7 @@ import { NutritionSummary } from '@/src/components/nutrition';
 export type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 export function Icon({ name, size = 22, color = palette.text }: { name: IconName; size?: number; color?: string }) {
+  if (name === 'chevron-right') return null;
   return <MaterialCommunityIcons name={name} size={size} color={color} />;
 }
 
@@ -93,7 +94,7 @@ export function GlassCard({ children, style, onPress, accessibilityLabel }: { ch
   const body = (
     <View style={[styles.card, style, onPress && styles.pressableCard]}>
       <BlurView intensity={18} tint="dark" style={StyleSheet.absoluteFill} />
-      <LinearGradient colors={gradients.card} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={onPress ? gradients.cardAction : gradients.card} style={StyleSheet.absoluteFill} />
       <View style={styles.cardContent}>{children}</View>
     </View>
   );
@@ -207,7 +208,7 @@ const styles = StyleSheet.create({
   wordmarkLarge: { fontSize: 34, letterSpacing: -1.5 },
   wordmarkAccent: { color: palette.pink },
   card: { borderRadius: radii.md, borderWidth: 1, borderColor: palette.border, overflow: 'hidden', backgroundColor: palette.panel },
-  pressableCard: { width: '100%' },
+  pressableCard: { width: '100%', borderColor: 'rgba(174, 190, 238, 0.28)' },
   cardContent: { flex: 1, zIndex: 1 },
   buttonOuter: { borderRadius: radii.pill, overflow: 'hidden', ...shadows.glow },
   button: { minHeight: 52, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderRadius: radii.pill },

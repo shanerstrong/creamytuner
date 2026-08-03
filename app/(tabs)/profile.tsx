@@ -34,7 +34,6 @@ export default function ProfileScreen() {
             <View style={styles.linkContent}>
               <View style={styles.linkIcon}><Icon name={link.icon} color={palette.lavender} /></View>
               <View style={styles.linkCopy}><Text style={styles.linkTitle}>{link.label}</Text><Text style={styles.linkSubtitle}>{link.subtitle}</Text></View>
-              <Icon name="chevron-right" color={palette.textMuted} />
             </View>
           </GlassCard>
         ))}

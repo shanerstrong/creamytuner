@@ -23,7 +23,7 @@ export default function HomeScreen() {
       <View style={styles.heroCard}>
         <View style={styles.heroRow}><PintHero image={recipeImages.strawberry} frames={pintSpinFrames} label="Strawberry pint" size={142} /><View style={styles.heroCopyWrap}><Text style={styles.eyebrow}>YOUR EASIEST PINT YET</Text><Text style={styles.heroTitle}>{settings.firstPintCompleted ? 'Build your next pint' : 'Build your first pint'}</Text><Text style={styles.heroCopy}>Choose what sounds good. Creamy Tuner builds the recipe and guides every step.</Text></View></View>
         <GradientButton title="Build my pint" icon="arrow-right" onPress={() => router.push('/builder')} />
-        {settings.guidedBuilderDraft ? <GlassCard style={styles.resumeCard} onPress={() => router.push('/builder?resume=1')} accessibilityLabel={`Resume ${draftSummary(settings.guidedBuilderDraft)}`}><Icon name="history" color={palette.cyan} /><View style={styles.resumeCopy}><Text style={styles.resumeTitle}>Continue where you left off</Text><Text style={styles.resumeDetail}>{draftSummary(settings.guidedBuilderDraft)}</Text></View><Icon name="chevron-right" color={palette.cyan} /></GlassCard> : null}
+        {settings.guidedBuilderDraft ? <GlassCard style={styles.resumeCard} onPress={() => router.push('/builder?resume=1')} accessibilityLabel={`Resume ${draftSummary(settings.guidedBuilderDraft)}`}><Icon name="history" color={palette.cyan} /><View style={styles.resumeCopy}><Text style={styles.resumeTitle}>Continue where you left off</Text><Text style={styles.resumeDetail}>{draftSummary(settings.guidedBuilderDraft)}</Text></View></GlassCard> : null}
       </View>
 
       {settings.activeFreezeTimer ? <><SectionTitle title="Your freezing pint" /><FreezeTimerCard timer={settings.activeFreezeTimer} onPress={() => router.push(`/freeze-timer?recipeId=${settings.activeFreezeTimer?.recipeId}`)} /></> : null}
@@ -56,7 +56,7 @@ function draftSummary(draft: NonNullable<ReturnType<typeof useApp>['settings']['
 }
 
 function ToolRow({ icon, title, detail, onPress }: { icon: 'tune-vertical' | 'snowflake-alert' | 'bookshelf' | 'record-circle-outline'; title: string; detail: string; onPress: () => void }) {
-  return <GlassCard onPress={onPress} accessibilityLabel={title} style={styles.toolRow}><View style={styles.toolIcon}><Icon name={icon} size={24} color={palette.lavender} /></View><View style={styles.toolCopy}><Text style={styles.toolTitle}>{title}</Text><Text style={styles.toolDetail}>{detail}</Text></View><Icon name="chevron-right" size={22} color={palette.textMuted} /></GlassCard>;
+  return <GlassCard onPress={onPress} accessibilityLabel={title} style={styles.toolRow}><View style={styles.toolIcon}><Icon name={icon} size={24} color={palette.lavender} /></View><View style={styles.toolCopy}><Text style={styles.toolTitle}>{title}</Text><Text style={styles.toolDetail}>{detail}</Text></View></GlassCard>;
 }
 
 const styles = StyleSheet.create({

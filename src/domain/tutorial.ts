@@ -1,12 +1,12 @@
 import { estimateVolumeMl } from '@/src/domain/nutrition';
 import type { Ingredient, Recipe, RecipeIngredient, TutorialDraft, TutorialTextureResult } from '@/src/types';
 
-export const CURRENT_ONBOARDING_VERSION = 2;
+export const CURRENT_ONBOARDING_VERSION = 3;
 export const TUTORIAL_STEP_COUNT = 11;
 
 export function tutorialItems(draft: TutorialDraft, ingredients: Ingredient[]): RecipeIngredient[] {
   const selected: (string | null)[] = [draft.proteinId, draft.helperId, draft.sweetenerId, draft.flavorId];
-  const items: RecipeIngredient[] = [{ ingredientId: draft.baseId, amount: draft.baseAmountMl, unit: 'ml' }];
+  const items: RecipeIngredient[] = draft.baseAdded ? [{ ingredientId: draft.baseId, amount: draft.baseAmountMl, unit: 'ml' }] : [];
   for (const id of selected) {
     if (!id) continue;
     const ingredient = ingredients.find((candidate) => candidate.id === id);
@@ -18,6 +18,13 @@ export function tutorialItems(draft: TutorialDraft, ingredients: Ingredient[]): 
 export function fitTutorialBaseAmount(draft: TutorialDraft, ingredients: Ingredient[], capacityMl: number) {
   const nonBase = tutorialItems({ ...draft, baseAmountMl: 1 }, ingredients).filter((item) => item.ingredientId !== draft.baseId);
   return Math.max(60, Math.floor(capacityMl * 0.88 - estimateVolumeMl(nonBase)));
+}
+
+export function clampCreamyPosition(position: { x: number; y: number }, viewportWidth: number, viewportHeight: number) {
+  return {
+    x: Math.min(0, Math.max(-(Math.max(0, viewportWidth - 148)), Math.round(position.x))),
+    y: Math.min(48, Math.max(-(Math.max(0, viewportHeight - 300)), Math.round(position.y))),
+  };
 }
 
 export function tutorialRecipePresentation(draft: TutorialDraft): { name: string; imageKey: Recipe['imageKey'] } {
