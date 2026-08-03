@@ -45,7 +45,6 @@ export default function SettingsScreen() {
     await updateSettings({
       onboarded: false,
       onboardingVersion: CURRENT_ONBOARDING_VERSION - 1,
-      tutorialPintVisible: true,
       tutorialDraft: tutorialDraftSchema.parse({ machineId: settings.machineId, flowVersion: CURRENT_ONBOARDING_VERSION }),
     });
     router.replace('/');
@@ -58,11 +57,6 @@ export default function SettingsScreen() {
           <Icon name="school-outline" color={palette.cyan} />
           <View style={styles.copy}><Text style={styles.title}>Tutorial Mode</Text><Text style={styles.subtitle}>Show step-by-step help, fill guidance, and timer tips</Text></View>
           <Switch value={settings.tutorialMode} onValueChange={(tutorialMode) => updateSettings({ tutorialMode })} trackColor={{ false: palette.panelRaised, true: palette.cyan }} thumbColor={palette.white} accessibilityLabel="Toggle beginner guidance" />
-        </GlassCard>
-        <GlassCard style={styles.row}>
-          <Icon name="emoticon-happy-outline" color={palette.pink} />
-          <View style={styles.copy}><Text style={styles.title}>Show Creamy helper</Text><Text style={styles.subtitle}>Animated fill guide during the first-pint tutorial</Text></View>
-          <Switch value={settings.creamyHelperEnabled} onValueChange={(creamyHelperEnabled) => updateSettings({ creamyHelperEnabled, tutorialPintVisible: creamyHelperEnabled })} trackColor={{ false: palette.panelRaised, true: palette.pink }} thumbColor={palette.white} accessibilityLabel="Show Creamy helper" />
         </GlassCard>
         <SettingRow icon="play-circle-outline" title="Replay first-pint tutorial" value="Walk through every step again" onPress={() => { void replayTutorial(); }} />
         <SettingRow icon="tune-vertical" title="Advanced builder" value="Start with full ingredient controls" onPress={() => router.push('/builder?advanced=1')} />

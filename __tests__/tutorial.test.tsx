@@ -1,10 +1,10 @@
-import { fireEvent, render } from '@testing-library/react-native';
+import { render } from '@testing-library/react-native';
 
-import { MiniPintOverlay } from '@/src/components/tutorial/mini-pint-overlay';
+import { FooterCreamy } from '@/src/components/tutorial/footer-creamy';
 import { seededIngredients } from '@/src/data/ingredients';
-import { machineById } from '@/src/data/machines';
+import { machineById, machines } from '@/src/data/machines';
 import { estimateVolumeMl } from '@/src/domain/nutrition';
-import { CURRENT_ONBOARDING_VERSION, clampCreamyPosition, fitTutorialBaseAmount, tutorialItems, tutorialMixInItem, tutorialRecipePresentation, tutorialTextureGuidance } from '@/src/domain/tutorial';
+import { CURRENT_ONBOARDING_VERSION, fitTutorialBaseItems, normalizeTutorialDraft, tutorialBaseTemplates, tutorialItems, tutorialMixInItem, tutorialRecipePresentation, tutorialRecommendation, tutorialTextureGuidance } from '@/src/domain/tutorial';
 import { tutorialDraftSchema, userSettingsSchema } from '@/src/types';
 
 describe('first-pint tutorial', () => {
@@ -12,29 +12,62 @@ describe('first-pint tutorial', () => {
     const settings = userSettingsSchema.parse({ onboarded: true });
     expect(settings.onboardingVersion).toBeLessThan(CURRENT_ONBOARDING_VERSION);
     expect(settings.tutorialDraft.step).toBe(0);
-    expect(settings.tutorialPintVisible).toBe(true);
-    expect(settings.creamyHelperEnabled).toBe(true);
   });
 
-  test('Creamy starts empty, then selected ingredients fill him while mix-ins stay post-spin', () => {
+  test('old single-base drafts migrate without losing the amount', () => {
+    const oldDraft = tutorialDraftSchema.parse({ version: 1, baseAdded: true, baseId: 'soy-milk', baseAmountMl: 325 });
+    const migrated = normalizeTutorialDraft(oldDraft);
+    expect(migrated.version).toBe(2);
+    expect(migrated.baseItems).toEqual([{ ingredientId: 'soy-milk', amount: 325, unit: 'ml' }]);
+  });
+
+  test('Creamy starts empty, then every selected base and ingredient fills him', () => {
     expect(tutorialItems(tutorialDraftSchema.parse({}), seededIngredients)).toEqual([]);
-    const draft = tutorialDraftSchema.parse({ baseAdded: true, proteinId: 'whey-vanilla', helperId: 'jello-vanilla-zero', sweetenerId: 'allulose', flavorId: 'strawberries', mixInId: 'cookie-pieces' });
+    const draft = tutorialDraftSchema.parse({
+      baseItems: [
+        { ingredientId: 'milk-2', amount: 100, unit: 'ml' },
+        { ingredientId: 'almond-milk', amount: 300, unit: 'ml' },
+      ],
+      selectedIngredientIds: ['whey-vanilla', 'jello-vanilla-zero', 'allulose', 'strawberries'],
+      itemAmounts: { 'whey-vanilla': 35, strawberries: 80 },
+      mixInId: 'cookie-pieces',
+    });
     const baseItems = tutorialItems(draft, seededIngredients);
-    expect(baseItems.map((item) => item.ingredientId)).toEqual(expect.arrayContaining(['milk-2', 'whey-vanilla', 'jello-vanilla-zero', 'allulose', 'strawberries']));
+    expect(baseItems.map((item) => item.ingredientId)).toEqual(expect.arrayContaining(['milk-2', 'almond-milk', 'whey-vanilla', 'jello-vanilla-zero', 'allulose', 'strawberries']));
+    expect(baseItems.find((item) => item.ingredientId === 'whey-vanilla')?.amount).toBe(35);
     expect(baseItems.some((item) => item.ingredientId === 'cookie-pieces')).toBe(false);
     expect(tutorialMixInItem(draft, seededIngredients)?.ingredientId).toBe('cookie-pieces');
   });
 
-  test('Fit this container reduces the base below the conservative target', () => {
-    const draft = tutorialDraftSchema.parse({ machineId: 'classic', baseAdded: true, proteinId: 'whey-vanilla', helperId: 'jello-vanilla-zero', sweetenerId: 'allulose', flavorId: 'strawberries' });
-    const capacity = machineById('classic').capacityMl;
-    const fitted = { ...draft, baseAmountMl: fitTutorialBaseAmount(draft, seededIngredients, capacity) };
-    expect(estimateVolumeMl(tutorialItems(fitted, seededIngredients))).toBeLessThanOrEqual(Math.floor(capacity * 0.88));
+  test.each(machines.map((machine) => [machine.id, machine.capacityMl] as const))('base templates fit %s', (machineId, capacityMl) => {
+    const templates = tutorialBaseTemplates(capacityMl);
+    expect(templates).toHaveLength(3);
+    for (const template of templates) {
+      expect(estimateVolumeMl(template.items)).toBeLessThanOrEqual(Math.floor(machineById(machineId).capacityMl * 0.88));
+      expect(template.items).toHaveLength(2);
+    }
   });
 
-  test('multiple selections in one tutorial category are all included', () => {
-    const draft = tutorialDraftSchema.parse({ baseAdded: true, selectedIngredientIds: ['jello-vanilla-zero', 'xanthan-gum', 'strawberries', 'banana'] });
-    expect(tutorialItems(draft, seededIngredients).map((item) => item.ingredientId)).toEqual(expect.arrayContaining(['jello-vanilla-zero', 'xanthan-gum', 'strawberries', 'banana']));
+  test('Fit this container preserves the base ratio and reaches the safe target', () => {
+    const draft = tutorialDraftSchema.parse({
+      machineId: 'classic',
+      baseItems: [
+        { ingredientId: 'milk-2', amount: 300, unit: 'ml' },
+        { ingredientId: 'almond-milk', amount: 300, unit: 'ml' },
+      ],
+      selectedIngredientIds: ['whey-vanilla', 'allulose', 'strawberries'],
+    });
+    const capacity = machineById('classic').capacityMl;
+    const fitted = { ...draft, baseItems: fitTutorialBaseItems(draft, seededIngredients, capacity) };
+    expect(estimateVolumeMl(tutorialItems(fitted, seededIngredients))).toBeLessThanOrEqual(Math.floor(capacity * 0.88));
+    expect(fitted.baseItems[0].amount).toBeCloseTo(fitted.baseItems[1].amount, 0);
+  });
+
+  test('recommendations react to the chosen base', () => {
+    const plantDraft = tutorialDraftSchema.parse({ baseItems: tutorialBaseTemplates(709)[2].items });
+    const dairyDraft = tutorialDraftSchema.parse({ baseItems: tutorialBaseTemplates(709)[1].items });
+    expect(tutorialRecommendation(plantDraft, seededIngredients, 'helper')?.ingredientId).toBe('xanthan-gum');
+    expect(tutorialRecommendation(dairyDraft, seededIngredients, 'helper')?.ingredientId).toBe('jello-vanilla-zero');
   });
 
   test('tutorial copy routes each result to a clear next action', () => {
@@ -45,16 +78,13 @@ describe('first-pint tutorial', () => {
     expect(tutorialRecipePresentation(tutorialDraftSchema.parse({ flavorId: 'cocoa' })).imageKey).toBe('chocolate');
   });
 
-  test('mini pint announces overflow and can be hidden', async () => {
-    const onToggle = jest.fn();
-    const screen = await render(<MiniPintOverlay amountMl={500} capacityMl={473} visible position={{ x: 0, y: 0 }} onPositionChange={jest.fn()} onToggle={onToggle} />);
-    expect(screen.getByLabelText(/Creamy, live pint helper.*Over the MAX line.*Scared/i)).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: 'Hide Creamy helper' }));
-    expect(onToggle).toHaveBeenCalledTimes(1);
-  });
-
-  test('Creamy stays inside the tutorial viewport when dragged', () => {
-    expect(clampCreamyPosition({ x: -999, y: -999 }, 390, 844)).toEqual({ x: -214, y: -544 });
-    expect(clampCreamyPosition({ x: 90, y: 90 }, 390, 844)).toEqual({ x: 0, y: 48 });
+  test('footer Creamy announces empty, progress, and overflow states', async () => {
+    const addition = { kind: 'liquid' as const, nonce: 0 };
+    const screen = await render(<FooterCreamy amountMl={0} capacityMl={473} addition={addition} />);
+    expect(screen.getByText('EMPTY')).toBeTruthy();
+    await screen.rerender(<FooterCreamy amountMl={240} capacityMl={473} addition={{ kind: 'fruit', nonce: 1 }} />);
+    expect(screen.getByText('51%')).toBeTruthy();
+    await screen.rerender(<FooterCreamy amountMl={500} capacityMl={473} addition={{ kind: 'spoon', nonce: 2 }} />);
+    expect(screen.getByText('TOO FULL')).toBeTruthy();
   });
 });
