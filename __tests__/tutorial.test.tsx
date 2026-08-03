@@ -43,6 +43,16 @@ describe('first-pint tutorial', () => {
     expect(onRemove).toHaveBeenCalledTimes(1);
   });
 
+  test('liquid sweeteners open with friendly spoon amounts and a clear portion note', async () => {
+    const ingredient = seededIngredients.find((item) => item.id === 'honey');
+    expect(ingredient).toBeTruthy();
+    const onChange = jest.fn();
+    const screen = await render(<TutorialAmountEditor item={{ ingredientId: 'honey', amount: 3, unit: 'tsp' }} ingredient={ingredient!} settings={userSettingsSchema.parse({ units: 'us', measurementMode: 'kitchen' })} recommendedAmount={3} onChange={onChange} />);
+    expect(screen.getByLabelText('Honey amount in teaspoons').props.value).toBe('3');
+    expect(screen.getByText('Precise')).toBeTruthy();
+    expect(screen.getByText('1 tbsp (3 tsp) is roughly 21 g')).toBeTruthy();
+  });
+
   test('Creamy starts empty, then every selected base and ingredient fills him', () => {
     expect(tutorialItems(tutorialDraftSchema.parse({}), seededIngredients)).toEqual([]);
     const draft = tutorialDraftSchema.parse({

@@ -33,10 +33,12 @@ describe('nutrition engine', () => {
   });
   it('uses practical increments for amount stepper controls', () => {
     expect(displayAmountStep('cup')).toBe(0.25);
-    expect(displayAmountStep('tbsp')).toBe(1);
-    expect(displayAmountStep('tsp')).toBe(0.25);
+    expect(displayAmountStep('tbsp')).toBe(0.5);
+    expect(displayAmountStep('tsp')).toBe(0.5);
     expect(displayAmountStep('fl-oz')).toBe(0.5);
     expect(displayAmountStep('ml')).toBe(10);
     expect(displayAmountStep('g')).toBe(5);
+    expect(displayAmountStep('tbsp', true)).toBe(0.25);
+    expect(displayAmountStep('oz', true)).toBe(0.1);
   });
 });

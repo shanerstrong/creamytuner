@@ -94,12 +94,17 @@ export function displayUnitOptions(unit: Unit, system: 'metric' | 'us', mode: Me
 }
 
 /** A practical single-tap increment for each editable display unit. */
-export function displayAmountStep(displayUnit: DisplayUnit): number {
+export function displayAmountStep(displayUnit: DisplayUnit, precise = false): number {
+  if (precise) {
+    if (displayUnit === 'cup') return 0.05;
+    if (displayUnit === 'tbsp' || displayUnit === 'tsp') return 0.25;
+    if (displayUnit === 'fl-oz' || displayUnit === 'oz') return 0.1;
+    return 1;
+  }
   if (displayUnit === 'cup') return 0.25;
-  if (displayUnit === 'tbsp') return 1;
-  if (displayUnit === 'tsp') return 0.25;
+  if (displayUnit === 'tbsp' || displayUnit === 'tsp') return 0.5;
   if (displayUnit === 'fl-oz') return 0.5;
-  if (displayUnit === 'oz') return 0.25;
+  if (displayUnit === 'oz') return 0.5;
   if (displayUnit === 'ml') return 10;
   return 5;
 }

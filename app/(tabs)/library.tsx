@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -17,9 +17,9 @@ const sorts = [{ id: 'popular', label: 'Popular' }, { id: 'az', label: 'A–Z' }
 type SortId = typeof sorts[number]['id'];
 const categoryIcons: Record<IngredientCategory, IconName> = { protein: 'arm-flex', base: 'cup-water', sweetener: 'spoon-sugar', stabilizer: 'blur', fruit: 'fruit-cherries', flavoring: 'shaker-outline', 'mix-in': 'cookie' };
 
-function IngredientItem({ ingredient, grid }: { ingredient: Ingredient; grid: boolean }) {
+function IngredientItem({ ingredient, grid, onPress }: { ingredient: Ingredient; grid: boolean; onPress: () => void }) {
   const card = (
-    <GlassCard onPress={() => router.push(`/ingredient/${ingredient.id}` as never)} accessibilityLabel={`View ${ingredient.name} details`} style={[styles.item, grid && styles.gridItemInner]}>
+    <GlassCard onPress={onPress} accessibilityLabel={`Select ${ingredient.name}`} style={[styles.item, grid && styles.gridItemInner]}>
       <View style={[styles.itemContent, grid && styles.gridItemContent]}>
         <View style={[styles.ingredientIcon, grid && styles.gridIcon]}><Icon name={categoryIcons[ingredient.category]} color={ingredient.isCustom ? palette.cyan : palette.lavender} /></View>
         <View style={styles.copy}>
@@ -35,8 +35,11 @@ function IngredientItem({ ingredient, grid }: { ingredient: Ingredient; grid: bo
 
 export default function IngredientLibraryScreen() {
   const { ingredients, settings, updateSettings } = useApp();
+  const params = useLocalSearchParams<{ tutorial?: string; category?: string }>();
+  const tutorialPicker = params.tutorial === '1';
+  const initialCategory = categories.some((item) => item.id === params.category) ? params.category as 'all' | IngredientCategory : 'all';
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<'all' | IngredientCategory>('all');
+  const [category, setCategory] = useState<'all' | IngredientCategory>(initialCategory);
   const [sort, setSort] = useState<SortId>('popular');
   const filtered = useMemo(() => ingredients.filter((ingredient) => {
     const needle = query.trim().toLowerCase();
@@ -52,9 +55,34 @@ export default function IngredientLibraryScreen() {
   const bundled = filtered.filter((item) => !item.isCustom);
   const grid = settings.ingredientLibraryView === 'grid';
 
+  const selectIngredient = async (ingredient: Ingredient) => {
+    if (!tutorialPicker) {
+      router.push(`/ingredient/${ingredient.id}` as never);
+      return;
+    }
+    const draft = settings.tutorialDraft;
+    if (ingredient.category === 'base') {
+      const baseItems = draft.baseItems.some((item) => item.ingredientId === ingredient.id)
+        ? draft.baseItems
+        : [...draft.baseItems, { ingredientId: ingredient.id, amount: ingredient.defaultAmount, unit: ingredient.defaultUnit }];
+      await updateSettings({ tutorialDraft: { ...draft, baseItems } });
+    } else if (draft.stage === 'mix-ins' && ingredient.category === 'mix-in') {
+      await updateSettings({ tutorialDraft: { ...draft, mixInId: ingredient.id } });
+    } else {
+      const selectedIngredientIds = [...new Set([...draft.selectedIngredientIds, ingredient.id])];
+      await updateSettings({ tutorialDraft: { ...draft, selectedIngredientIds, itemAmounts: { ...draft.itemAmounts, [ingredient.id]: ingredient.defaultAmount } } });
+    }
+    router.replace('/tutorial?resume=1');
+  };
+
   return (
     <Screen>
-      <AppHeader title="Ingredient Library" subtitle={`${ingredients.length} offline references`} right={<IconButton icon="plus" label="Add custom ingredient" onPress={() => router.push('/ingredient-new')} />} />
+      <AppHeader
+        title={tutorialPicker ? 'Add an ingredient' : 'Ingredient Library'}
+        subtitle={tutorialPicker ? 'Tap one to add it to this pint' : `${ingredients.length} offline references`}
+        left={tutorialPicker ? <IconButton icon="close" label="Return to tutorial" onPress={() => router.replace('/tutorial?resume=1')} /> : undefined}
+        right={<IconButton icon="plus" label="Add custom ingredient" onPress={() => router.push({ pathname: '/ingredient-new', params: tutorialPicker ? { tutorial: '1', category } : {} })} />}
+      />
       <SearchField value={query} onChangeText={setQuery} />
       <View style={styles.filterSection}>
         <Text style={styles.controlLabel}>FILTER BY</Text>
@@ -74,8 +102,8 @@ export default function IngredientLibraryScreen() {
         </View>
       </View>
       {!filtered.length ? <EmptyState icon="magnify-close" title="No ingredients found" message="Try another search or clear a category filter." action="Clear filters" onAction={() => { setQuery(''); setCategory('all'); }} /> : null}
-      {custom.length ? <><Text style={styles.groupTitle}>My ingredients</Text><View style={[styles.list, grid && styles.grid]}>{custom.map((item) => <IngredientItem key={item.id} ingredient={item} grid={grid} />)}</View></> : null}
-      {bundled.length ? <><Text style={styles.groupTitle}>{custom.length ? 'Creamy Tuner library' : 'Ingredients'}</Text><View style={[styles.list, grid && styles.grid]}>{bundled.map((item) => <IngredientItem key={item.id} ingredient={item} grid={grid} />)}</View></> : null}
+      {custom.length ? <><Text style={styles.groupTitle}>My ingredients</Text><View style={[styles.list, grid && styles.grid]}>{custom.map((item) => <IngredientItem key={item.id} ingredient={item} grid={grid} onPress={() => void selectIngredient(item)} />)}</View></> : null}
+      {bundled.length ? <><Text style={styles.groupTitle}>{custom.length ? 'Creamy Tuner library' : 'Ingredients'}</Text><View style={[styles.list, grid && styles.grid]}>{bundled.map((item) => <IngredientItem key={item.id} ingredient={item} grid={grid} onPress={() => void selectIngredient(item)} />)}</View></> : null}
       <Text style={styles.disclaimer}>Nutrition is informational and may change. For branded foods, compare the saved reference with the current package label.</Text>
     </Screen>
   );

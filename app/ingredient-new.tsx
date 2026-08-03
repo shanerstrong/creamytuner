@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -12,8 +12,10 @@ const units: Unit[] = ['g', 'ml', 'tsp'];
 
 export default function NewIngredientScreen() {
   const { addCustomIngredient } = useApp();
+  const params = useLocalSearchParams<{ tutorial?: string; category?: string }>();
+  const requestedCategory = categories.includes(params.category as IngredientCategory) ? params.category as IngredientCategory : 'protein';
   const [name, setName] = useState('');
-  const [category, setCategory] = useState<IngredientCategory>('protein');
+  const [category, setCategory] = useState<IngredientCategory>(requestedCategory);
   const [unit, setUnit] = useState<Unit>('g');
   const [reference, setReference] = useState('100');
   const [calories, setCalories] = useState('');
@@ -40,7 +42,11 @@ export default function NewIngredientScreen() {
       nutrition: { calories: Number(calories) || 0, protein: Number(protein) || 0, carbs: Number(carbs) || 0, sugar: Number(sugar) || 0, addedSugar: Number(addedSugar) || 0, fat: Number(fat) || 0, fiber: 0 },
       isCustom: true,
     });
-    router.back();
+    if (params.tutorial === '1') {
+      router.replace({ pathname: '/(tabs)/library', params: { tutorial: '1', category } });
+    } else {
+      router.back();
+    }
   };
 
   return (
