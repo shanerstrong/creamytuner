@@ -60,7 +60,7 @@ export function AppProvider({ children }: React.PropsWithChildren) {
 
   useEffect(() => {
     refresh().catch((error) => {
-      console.error('Failed to load CreamyTuner data', error);
+      console.error('Failed to load Creamy Tuner data', error);
       setReady(true);
     });
   }, [refresh]);
@@ -116,7 +116,7 @@ export function AppProvider({ children }: React.PropsWithChildren) {
     exportFile.create({ overwrite: true });
     exportFile.write(JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), settings, recipes, customIngredients }, null, 2));
     if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(exportFile.uri, { mimeType: 'application/json', dialogTitle: 'Export CreamyTuner data' });
+      await Sharing.shareAsync(exportFile.uri, { mimeType: 'application/json', dialogTitle: 'Export Creamy Tuner data' });
     }
   }, [customIngredients, recipes, settings]);
 

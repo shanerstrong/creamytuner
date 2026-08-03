@@ -23,6 +23,7 @@ describe('ingredient catalog', () => {
     expect(settings.tutorialMode).toBe(true);
     expect(settings.firstPintCompleted).toBe(false);
     expect(settings.guidedBuilderDraft).toBeNull();
+    expect(settings.activeFreezeTimer).toBeNull();
   });
   it('validates resumable guided builder drafts without a database migration', () => {
     const settings = userSettingsSchema.parse({ guidedBuilderDraft: {

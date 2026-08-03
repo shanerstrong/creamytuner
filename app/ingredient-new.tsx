@@ -58,7 +58,7 @@ export default function NewIngredientScreen() {
         <View style={styles.half}><Field label="Sugar (g)" value={sugar} onChangeText={setSugar} keyboardType="decimal-pad" /></View>
         <View style={styles.half}><Field label="Fat (g)" value={fat} onChangeText={setFat} keyboardType="decimal-pad" /></View>
       </View>
-      <Text style={styles.note}>CreamyTuner stores this data only on your device. Values are estimates based on what you enter.</Text>
+      <Text style={styles.note}>Creamy Tuner stores this data only on your device. Values are estimates based on what you enter.</Text>
       <GradientButton title="Save Ingredient" icon="content-save" onPress={submit} />
     </Screen>
   );

@@ -6,6 +6,7 @@ import { CollapsedAdjustStep, CompactProgress, BuilderQuestionStep, OptionalPant
 import { ReviewStep } from '@/src/components/builder/steps';
 import { AppHeader, GradientButton, Icon, IconButton, LoadingScreen, Screen } from '@/src/components/ui';
 import { calculateNutrition } from '@/src/domain/nutrition';
+import { machineById } from '@/src/data/machines';
 import { generateRecipe, getPantrySubstitutionProposals, getRecipeFixOptions, recommendBeginnerRecipe, recommendProgram, validateRecipe, type RecipeFixOption } from '@/src/domain/generator';
 import { useApp } from '@/src/providers/app-provider';
 import { palette, spacing } from '@/src/theme';
@@ -18,6 +19,7 @@ export default function BuilderScreen() {
   const params = useLocalSearchParams<{ recipeId?: string; resume?: string; advanced?: string }>();
   const { ready, ingredients, recipes, settings, updateSettings, saveRecipe } = useApp();
   const source = recipes.find((recipe) => recipe.id === params.recipeId);
+  const machine = machineById(settings.machineId);
   const initialized = useRef(false);
   const lastDraft = useRef('');
   const previousIndex = useRef(0);
@@ -98,7 +100,9 @@ export default function BuilderScreen() {
     const imageKey: Recipe['imageKey'] = selected.has('cocoa') ? 'chocolate' : selected.has('peppermint') ? 'mint' : selected.has('cookie-pieces') ? 'cookies' : 'strawberry';
     const recipe = generateRecipe({ name, style: recipeStyle, items, ingredients, existingId: source?.id, imageKey: source?.imageKey ?? imageKey, favorite: source?.favorite });
     if (source) recipe.createdAt = source.createdAt;
-    await saveRecipe(recipe); await updateSettings({ firstPintCompleted: true, guidedBuilderDraft: null }); router.replace(`/recipe/${recipe.id}`);
+    await saveRecipe(recipe);
+    await updateSettings({ firstPintCompleted: true, guidedBuilderDraft: null });
+    router.replace(source ? `/recipe/${recipe.id}` : `/freeze-timer?recipeId=${recipe.id}&justBuilt=1`);
   };
   const back = () => {
     if (stage === 'question-texture') return router.back();
@@ -119,9 +123,9 @@ export default function BuilderScreen() {
     <CompactProgress stage={stage} />
     <Animated.View style={{ opacity: fade, transform: [{ translateX: slide }] }}>
       {questionStages.has(stage) ? <BuilderQuestionStep stage={stage} answers={answers} onChange={setAnswers} showGuidance={settings.tutorialMode} /> : null}
-      {stage === 'recommendation' ? <RecommendationResult name={name} expectedTexture={recommendation.expectedTexture} rationale={recommendation.rationale} nutrition={nutrition} validation={validation} program={program} onUse={() => setStage('review')} onCustomize={() => setStage('customize')} pantryOpen={pantryOpen} onTogglePantry={() => setPantryOpen((current) => !current)}>{<OptionalPantry ingredients={ingredients} selectedIds={pantryIds} proposals={proposals} onToggle={(id) => setPantryIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} onApply={applyProposals} />}</RecommendationResult> : null}
-      {stage === 'customize' ? <CollapsedAdjustStep name={name} onNameChange={setName} items={items} ingredients={ingredients} settings={settings} issue={adjustmentIssue} highlightedIds={highlightedIds} recommendedAmounts={recommendedAmounts} onItemsChange={(next) => { setItems(next); setAppliedFix(''); }} onMeasurementModeChange={(measurementMode) => void updateSettings({ measurementMode })} onUnitSystemChange={(units) => void updateSettings({ units })} /> : null}
-      {stage === 'review' ? <ReviewStep nutrition={nutrition} validation={validation} program={program} items={items} ingredients={ingredients} settings={settings} fixOptions={fixOptions} appliedFix={appliedFix} onAdjustIssue={(issue) => { setAdjustmentIssue(issue); setAppliedFix(''); setStage('customize'); }} onApplyFix={applyFix} /> : null}
+      {stage === 'recommendation' ? <RecommendationResult name={name} expectedTexture={recommendation.expectedTexture} rationale={recommendation.rationale} nutrition={nutrition} validation={validation} program={program} capacityMl={machine.capacityMl} tutorialMode={settings.tutorialMode} onUse={() => setStage('review')} onCustomize={() => setStage('customize')} pantryOpen={pantryOpen} onTogglePantry={() => setPantryOpen((current) => !current)}>{<OptionalPantry ingredients={ingredients} selectedIds={pantryIds} proposals={proposals} onToggle={(id) => setPantryIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} onApply={applyProposals} />}</RecommendationResult> : null}
+      {stage === 'customize' ? <CollapsedAdjustStep name={name} onNameChange={setName} items={items} ingredients={ingredients} settings={settings} issue={adjustmentIssue} highlightedIds={highlightedIds} recommendedAmounts={recommendedAmounts} estimatedVolumeMl={rawValidation.estimatedVolumeMl} capacityMl={machine.capacityMl} onItemsChange={(next) => { setItems(next); setAppliedFix(''); }} onMeasurementModeChange={(measurementMode) => void updateSettings({ measurementMode })} onUnitSystemChange={(units) => void updateSettings({ units })} /> : null}
+      {stage === 'review' ? <ReviewStep nutrition={nutrition} validation={validation} program={program} items={items} ingredients={ingredients} settings={settings} capacityMl={machine.capacityMl} fixOptions={fixOptions} appliedFix={appliedFix} onAdjustIssue={(issue) => { setAdjustmentIssue(issue); setAppliedFix(''); setStage('customize'); }} onApplyFix={applyFix} /> : null}
     </Animated.View>
     {stage === 'review' && validation.errors.length ? <Text style={styles.blocked}>Choose “Fit this container” before saving.</Text> : null}
     <Text style={styles.legal}>Recommendations are estimates. Check your machine’s fill line and official instructions.</Text>

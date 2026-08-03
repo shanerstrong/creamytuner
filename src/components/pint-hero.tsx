@@ -11,7 +11,7 @@ type PintHeroProps = {
   size?: number;
 };
 
-export function PintHero({ image, frames = [image], label = 'CreamyTuner pint', size = 300 }: PintHeroProps) {
+export function PintHero({ image, frames = [image], label = 'Creamy Tuner pint', size = 300 }: PintHeroProps) {
   const [angle, setAngle] = useState(0);
   const startAngle = useRef(0);
 

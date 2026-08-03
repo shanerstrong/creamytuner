@@ -1,6 +1,6 @@
-# CreamyTuner
+# Creamy Tuner
 
-CreamyTuner is an offline-first Expo app for building, saving, and spinning frozen-dessert recipes. The local MVP runs on iOS and Android from one TypeScript codebase and uses deterministic recipe guidance—no account, cloud service, analytics, subscription, or generative AI is required.
+Creamy Tuner is an offline-first Expo app for building, saving, and spinning frozen-dessert recipes. The local MVP runs on iOS and Android from one TypeScript codebase and uses deterministic recipe guidance—no account, cloud service, analytics, subscription, or generative AI is required.
 
 Live web demo: <https://shanerstrong.github.io/creamytuner/>
 
@@ -67,8 +67,8 @@ The public GitHub Pages demo uses browser-local storage because GitHub Pages can
 
 ## Product and safety notes
 
-CreamyTuner provides informational estimates and recipe guidance, not nutritional, medical, or equipment-safety guarantees. Users should verify ingredient labels, allergies, fill lines, programs, and operating instructions for their exact machine.
+Creamy Tuner provides informational estimates and recipe guidance, not nutritional, medical, or equipment-safety guarantees. Users should verify ingredient labels, allergies, fill lines, programs, and operating instructions for their exact machine.
 
-Ninja, CREAMi, and model names are used descriptively. CreamyTuner is independent and is not affiliated with or endorsed by SharkNinja.
+Ninja, CREAMi, and model names are used descriptively. Creamy Tuner is independent and is not affiliated with or endorsed by SharkNinja.
 
-The CreamyTuner name had no exact match in preliminary US Apple/Google Play searches when this MVP was started. Trademark clearance and store-name reservation are still required before public launch.
+The Creamy Tuner name had no exact match in preliminary US Apple/Google Play searches when this MVP was started. Trademark clearance and store-name reservation are still required before public launch.

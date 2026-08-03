@@ -39,7 +39,7 @@ export default function ProfileScreen() {
           </GlassCard>
         ))}
       </View>
-      <Text style={styles.version}>CreamyTuner Private Beta · v1.0.0</Text>
+      <Text style={styles.version}>Creamy Tuner Private Beta · v1.0.0</Text>
     </Screen>
   );
 }

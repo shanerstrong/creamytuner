@@ -43,7 +43,7 @@ export default function MachineSelectionScreen() {
           );
         })}
       </View>
-      <Text style={styles.note}>Model names are used descriptively. CreamyTuner is independent and is not affiliated with or endorsed by SharkNinja.</Text>
+      <Text style={styles.note}>Model names are used descriptively. Creamy Tuner is independent and is not affiliated with or endorsed by SharkNinja.</Text>
       <GradientButton title="Continue" icon="arrow-right" onPress={continueFlow} />
     </Screen>
   );

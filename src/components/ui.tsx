@@ -57,16 +57,16 @@ export function Screen({ children, scroll = true, contentStyle, resetKey, footer
 export function LogoMark({ size = 64 }: { size?: number }) {
   return (
     <View style={[styles.logoMark, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Image source={require('@/assets/images/icon.png')} style={{ width: size, height: size, borderRadius: size / 2 }} accessibilityLabel="CreamyTuner mark" />
+      <Image source={require('@/assets/images/icon.png')} style={{ width: size, height: size, borderRadius: size / 2 }} accessibilityLabel="Creamy Tuner mark" />
     </View>
   );
 }
 
 export function BrandWordmark({ large = false }: { large?: boolean }) {
   return (
-    <View style={styles.wordmarkRow} accessibilityLabel="CreamyTuner">
+    <View style={styles.wordmarkRow} accessibilityLabel="Creamy Tuner">
       <Text style={[styles.wordmark, large && styles.wordmarkLarge]}>Creamy</Text>
-      <Text style={[styles.wordmark, styles.wordmarkAccent, large && styles.wordmarkLarge]}>Tuner</Text>
+      <Text style={[styles.wordmark, styles.wordmarkAccent, large && styles.wordmarkLarge]}> Tuner</Text>
     </View>
   );
 }

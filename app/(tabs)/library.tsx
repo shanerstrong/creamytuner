@@ -67,7 +67,7 @@ export default function IngredientLibraryScreen() {
       </View>
       {!filtered.length ? <EmptyState icon="magnify-close" title="No ingredients found" message="Try another search or clear a category filter." action="Clear filters" onAction={() => { setQuery(''); setCategory('all'); }} /> : null}
       {custom.length ? <><Text style={styles.groupTitle}>My ingredients</Text><View style={[styles.list, grid && styles.grid]}>{custom.map((item) => <IngredientItem key={item.id} ingredient={item} grid={grid} />)}</View></> : null}
-      {bundled.length ? <><Text style={styles.groupTitle}>{custom.length ? 'CreamyTuner library' : 'Ingredients'}</Text><View style={[styles.list, grid && styles.grid]}>{bundled.map((item) => <IngredientItem key={item.id} ingredient={item} grid={grid} />)}</View></> : null}
+      {bundled.length ? <><Text style={styles.groupTitle}>{custom.length ? 'Creamy Tuner library' : 'Ingredients'}</Text><View style={[styles.list, grid && styles.grid]}>{bundled.map((item) => <IngredientItem key={item.id} ingredient={item} grid={grid} />)}</View></> : null}
       <Text style={styles.disclaimer}>Nutrition is informational and may change. For branded foods, compare the saved reference with the current package label.</Text>
     </Screen>
   );

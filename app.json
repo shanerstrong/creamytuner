@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "CreamyTuner",
+    "name": "Creamy Tuner",
     "slug": "creamytuner",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -40,7 +40,14 @@
         }
       ],
       "expo-sqlite",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-notifications",
+        {
+          "color": "#F14E9B",
+          "defaultChannel": "freeze-reminders"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

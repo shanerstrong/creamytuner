@@ -121,6 +121,15 @@ export const guidedBuilderDraftSchema = z.union([beginnerBuilderDraftSchema, leg
   };
 });
 
+export const freezeTimerSchema = z.object({
+  recipeId: z.string().min(1),
+  recipeName: z.string().min(1),
+  startedAt: z.string().min(1),
+  endsAt: z.string().min(1),
+  notificationId: z.string().optional(),
+  notificationScheduled: z.boolean().default(false),
+});
+
 export const userSettingsSchema = z.object({
   onboarded: z.boolean().default(false),
   machineId: z.string().default('nc501'),
@@ -132,6 +141,7 @@ export const userSettingsSchema = z.object({
   tutorialMode: z.boolean().default(true),
   firstPintCompleted: z.boolean().default(false),
   guidedBuilderDraft: guidedBuilderDraftSchema.nullable().default(null),
+  activeFreezeTimer: freezeTimerSchema.nullable().default(null),
 });
 
 export type IngredientCategory = z.infer<typeof ingredientCategorySchema>;
@@ -149,6 +159,7 @@ export type Recipe = z.infer<typeof recipeSchema>;
 export type UserSettings = z.infer<typeof userSettingsSchema>;
 export type BuilderMode = 'guided' | 'quick';
 export type GuidedBuilderDraft = NonNullable<UserSettings['guidedBuilderDraft']>;
+export type FreezeTimer = z.infer<typeof freezeTimerSchema>;
 export type TexturePreference = z.infer<typeof texturePreferenceSchema>;
 export type RecipeGoal = z.infer<typeof recipeGoalSchema>;
 export type BeginnerFlavor = z.infer<typeof beginnerFlavorSchema>;

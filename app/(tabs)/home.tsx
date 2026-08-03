@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { GlassCard, BrandWordmark, GradientButton, Icon, IconButton, RecipeCard, Screen, SectionTitle, textStyles } from '@/src/components/ui';
 import { PintHero } from '@/src/components/pint-hero';
+import { FreezeTimerCard } from '@/src/components/freeze-timer-card';
 import { pintSpinFrames, recipeImages } from '@/src/assets';
 import { machineById } from '@/src/data/machines';
 import { useApp } from '@/src/providers/app-provider';
@@ -20,10 +21,12 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.heroCard}>
-        <View style={styles.heroRow}><PintHero image={recipeImages.strawberry} frames={pintSpinFrames} label="Strawberry pint" size={142} /><View style={styles.heroCopyWrap}><Text style={styles.eyebrow}>MAKE SOMETHING GOOD</Text><Text style={styles.heroTitle}>{settings.firstPintCompleted ? 'Build your next pint' : 'Build your first pint'}</Text><Text style={styles.heroCopy}>Three quick choices, then CreamyTuner makes a complete starting recipe.</Text></View></View>
+        <View style={styles.heroRow}><PintHero image={recipeImages.strawberry} frames={pintSpinFrames} label="Strawberry pint" size={142} /><View style={styles.heroCopyWrap}><Text style={styles.eyebrow}>YOUR EASIEST PINT YET</Text><Text style={styles.heroTitle}>{settings.firstPintCompleted ? 'Build your next pint' : 'Build your first pint'}</Text><Text style={styles.heroCopy}>Choose what sounds good. Creamy Tuner builds the recipe and guides every step.</Text></View></View>
         <GradientButton title="Build my pint" icon="arrow-right" onPress={() => router.push('/builder')} />
         {settings.guidedBuilderDraft ? <GlassCard style={styles.resumeCard} onPress={() => router.push('/builder?resume=1')} accessibilityLabel={`Resume ${draftSummary(settings.guidedBuilderDraft)}`}><Icon name="history" color={palette.cyan} /><View style={styles.resumeCopy}><Text style={styles.resumeTitle}>Continue where you left off</Text><Text style={styles.resumeDetail}>{draftSummary(settings.guidedBuilderDraft)}</Text></View><Icon name="chevron-right" color={palette.cyan} /></GlassCard> : null}
       </View>
+
+      {settings.activeFreezeTimer ? <><SectionTitle title="Your freezing pint" /><FreezeTimerCard timer={settings.activeFreezeTimer} onPress={() => router.push(`/freeze-timer?recipeId=${settings.activeFreezeTimer?.recipeId}`)} /></> : null}
 
       <GlassCard style={styles.machineBanner} onPress={() => router.push('/machines')} accessibilityLabel="Change selected machine">
         <View><Text style={styles.machineLabel}>YOUR MACHINE</Text><Text style={styles.machineName}>{machine.name}</Text></View>

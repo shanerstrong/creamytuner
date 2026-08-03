@@ -1,18 +1,21 @@
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { StyleSheet, View } from 'react-native';
 
 import { PersistentBottomNav } from '@/src/components/persistent-bottom-nav';
 import { PersistenceProvider } from '@/src/providers/persistence-provider';
 import { palette } from '@/src/theme';
+import { configureFreezeNotifications } from '@/src/services/freeze-reminder';
 
 export const unstable_settings = {
   anchor: '(tabs)',
 };
 
 export default function RootLayout() {
+  useEffect(() => { configureFreezeNotifications(); }, []);
   return (
     <PersistenceProvider>
         <ThemeProvider value={{ ...DarkTheme, colors: { ...DarkTheme.colors, background: palette.ink, card: palette.navy, primary: palette.pink, text: palette.text, border: palette.border } }}>
@@ -22,6 +25,7 @@ export default function RootLayout() {
               <Stack.Screen name="machines" />
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="builder" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="freeze-timer" options={{ animation: 'slide_from_bottom' }} />
               <Stack.Screen name="program" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="troubleshoot" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="settings" options={{ animation: 'slide_from_right' }} />

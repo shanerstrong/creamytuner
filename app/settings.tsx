@@ -3,23 +3,49 @@ import { Alert, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { AppHeader, GlassCard, Icon, IconButton, Screen, type IconName } from '@/src/components/ui';
 import { machineById } from '@/src/data/machines';
+import { isFreezeTimerReady } from '@/src/domain/freeze-timer';
 import { useApp } from '@/src/providers/app-provider';
 import { palette, spacing } from '@/src/theme';
+import { cancelFreezeReminder, scheduleFreezeReminder } from '@/src/services/freeze-reminder';
 
 export default function SettingsScreen() {
   const { settings, updateSettings, exportData, resetData } = useApp();
   const machine = machineById(settings.machineId);
-  const confirmReset = () => Alert.alert('Reset CreamyTuner?', 'Custom recipes, ingredients, and spin history will be removed. Starter content will be restored.', [
+  const confirmReset = () => Alert.alert('Reset Creamy Tuner?', 'Custom recipes, ingredients, and spin history will be removed. Starter content will be restored.', [
     { text: 'Cancel', style: 'cancel' },
-    { text: 'Reset', style: 'destructive', onPress: async () => { await resetData(); router.replace('/'); } },
+    { text: 'Reset', style: 'destructive', onPress: async () => { await cancelFreezeReminder(settings.activeFreezeTimer?.notificationId); await resetData(); router.replace('/'); } },
   ]);
+  const changeFreezeNotifications = async (notifications: boolean) => {
+    if (!notifications && settings.activeFreezeTimer?.notificationId) {
+      await cancelFreezeReminder(settings.activeFreezeTimer.notificationId);
+      await updateSettings({ notifications, activeFreezeTimer: { ...settings.activeFreezeTimer, notificationId: undefined, notificationScheduled: false } });
+      return;
+    }
+    if (notifications && settings.activeFreezeTimer && !isFreezeTimerReady(settings.activeFreezeTimer)) {
+      try {
+        const reminder = await scheduleFreezeReminder(settings.activeFreezeTimer);
+        await updateSettings({
+          notifications: reminder.scheduled,
+          activeFreezeTimer: {
+            ...settings.activeFreezeTimer,
+            notificationId: reminder.notificationId,
+            notificationScheduled: reminder.scheduled,
+          },
+        });
+      } catch {
+        await updateSettings({ notifications: false });
+      }
+      return;
+    }
+    await updateSettings({ notifications });
+  };
   return (
     <Screen>
       <AppHeader title="Settings" left={<IconButton icon="chevron-left" label="Go back" onPress={() => router.back()} />} />
       <View style={styles.list}>
         <GlassCard style={styles.row}>
           <Icon name="school-outline" color={palette.cyan} />
-          <View style={styles.copy}><Text style={styles.title}>Beginner guidance</Text><Text style={styles.subtitle}>Keep extra explanations in the three-question builder</Text></View>
+          <View style={styles.copy}><Text style={styles.title}>Tutorial Mode</Text><Text style={styles.subtitle}>Show step-by-step help, fill guidance, and timer tips</Text></View>
           <Switch value={settings.tutorialMode} onValueChange={(tutorialMode) => updateSettings({ tutorialMode })} trackColor={{ false: palette.panelRaised, true: palette.cyan }} thumbColor={palette.white} accessibilityLabel="Toggle beginner guidance" />
         </GlassCard>
         <SettingRow icon="tune-vertical" title="Advanced builder" value="Start with full ingredient controls" onPress={() => router.push('/builder?advanced=1')} />
@@ -29,19 +55,19 @@ export default function SettingsScreen() {
         <SettingRow icon="weather-night" title="Dark Mode" value="Always on in beta" />
         <GlassCard style={styles.row}>
           <Icon name="bell-outline" color={palette.textMuted} />
-          <View style={styles.copy}><Text style={styles.title}>Reminder preference</Text><Text style={styles.subtitle}>Saved locally for future freeze reminders</Text></View>
-          <Switch value={settings.notifications} onValueChange={(value) => updateSettings({ notifications: value })} trackColor={{ false: palette.panelRaised, true: palette.cyan }} thumbColor={palette.white} accessibilityLabel="Toggle reminder preference" />
+          <View style={styles.copy}><Text style={styles.title}>Freeze notifications</Text><Text style={styles.subtitle}>Enabled after you approve a freeze timer notification</Text></View>
+          <Switch value={settings.notifications} onValueChange={(value) => { void changeFreezeNotifications(value); }} trackColor={{ false: palette.panelRaised, true: palette.cyan }} thumbColor={palette.white} accessibilityLabel="Toggle freeze notifications" />
         </GlassCard>
         <SettingRow icon="export-variant" title="Export Local Data" value="JSON backup" onPress={exportData} />
       </View>
       <Text style={styles.section}>ABOUT</Text>
       <View style={styles.list}>
-        <SettingRow icon="information-outline" title="About CreamyTuner" value="Version 1.0.0 beta" />
+        <SettingRow icon="information-outline" title="About Creamy Tuner" value="Version 1.0.0 beta" />
         <SettingRow icon="shield-lock-outline" title="Privacy" value="No account · no cloud" />
         <SettingRow icon="alert-circle-outline" title="Nutrition" value="Informational estimates" />
       </View>
       <GlassCard onPress={confirmReset} accessibilityLabel="Reset local data" style={styles.reset}><Icon name="delete-outline" color={palette.danger} /><Text style={styles.resetText}>Reset Local Data</Text></GlassCard>
-      <Text style={styles.disclaimer}>CreamyTuner is independent and unaffiliated with SharkNinja. Always follow your machine’s official owner’s guide and ingredient labels.</Text>
+      <Text style={styles.disclaimer}>Creamy Tuner is independent and unaffiliated with SharkNinja. Always follow your machine’s official owner’s guide and ingredient labels.</Text>
     </Screen>
   );
 }

@@ -31,7 +31,7 @@ export default function IngredientDetailScreen() {
       <BulletList title="Suggested substitutions" items={ingredient.substitutions ?? []} empty="No specific substitutions recorded. Browse the same category for alternatives." />
       <BulletList title="Cautions" items={ingredient.cautions ?? []} empty="No ingredient-specific cautions recorded. Always check your package for allergens." />
       <GlassCard style={styles.card}><Text style={styles.sectionTitle}>Reference source</Text>{ingredient.sourceUrl ? <><Text style={styles.source}>Checked {ingredient.sourceCheckedAt || 'date not recorded'}. Manufacturer formulations may change.</Text><GradientButton title="Open manufacturer source" icon="open-in-new" variant="secondary" onPress={() => Linking.openURL(ingredient.sourceUrl ?? '')} /></> : <Text style={styles.muted}>No manufacturer source is recorded for this general reference. Compare against your own label.</Text>}</GlassCard>
-      <Text style={styles.disclaimer}>CreamyTuner is not affiliated with the manufacturers listed. Nutrition is informational, not medical advice.</Text>
+      <Text style={styles.disclaimer}>Creamy Tuner is not affiliated with the manufacturers listed. Nutrition is informational, not medical advice.</Text>
     </Screen>
   );
 }
