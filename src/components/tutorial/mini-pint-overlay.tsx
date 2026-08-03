@@ -127,7 +127,7 @@ function CreamyFace({ mood }: { mood: 'bored' | 'happy' | 'scared' }) {
 }
 
 const styles = StyleSheet.create({
-  overlay: { position: 'absolute', zIndex: 50, right: 12, bottom: 96, width: 154, minHeight: 210, alignItems: 'center', borderRadius: radii.lg, borderWidth: 1, borderColor: 'rgba(78,217,232,0.45)', backgroundColor: 'rgba(10,16,38,0.96)', padding: spacing.xs, ...shadows.glow },
+  overlay: { position: 'absolute', zIndex: 50, right: 12, bottom: 180, width: 154, minHeight: 210, alignItems: 'center', borderRadius: radii.lg, borderWidth: 1, borderColor: 'rgba(78,217,232,0.45)', backgroundColor: 'rgba(10,16,38,0.96)', padding: spacing.xs, ...shadows.glow },
   overlayDanger: { borderColor: palette.danger, backgroundColor: 'rgba(69,18,43,0.97)' },
   hideButton: { position: 'absolute', zIndex: 20, top: 3, right: 2, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
   pintWrap: { height: 132, width: 94, justifyContent: 'flex-end', alignItems: 'center', marginTop: 5, marginLeft: -28 },
