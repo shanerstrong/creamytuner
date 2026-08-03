@@ -118,6 +118,6 @@ describe('first-pint tutorial', () => {
     expect(screen.getByText('51%')).toBeTruthy();
     await screen.rerender(<FooterCreamy amountMl={500} capacityMl={473} addition={{ kind: 'spoon', nonce: 2 }} />);
     expect(screen.getByText('TOO FULL')).toBeTruthy();
-    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Tap Creamy mascot' })).toBeTruthy();
   });
 });

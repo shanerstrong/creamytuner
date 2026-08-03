@@ -9,6 +9,10 @@ export async function choosePintPhoto(source: PintPhotoSource): Promise<string |
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) throw new Error('Camera permission is needed to take a pint photo.');
   }
+  if (source === 'library' && Platform.OS !== 'web') {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) throw new Error('Photo library permission is needed to choose a pint photo. You can enable it in Settings.');
+  }
 
   const options: ImagePicker.ImagePickerOptions = {
     mediaTypes: ['images'],

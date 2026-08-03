@@ -26,6 +26,7 @@ export function normalizeTutorialDraft(draft: TutorialDraft): TutorialDraft {
     selectedIngredientIds: [...new Set(draft.selectedIngredientIds)],
     disclosures: [...new Set(draft.disclosures)],
     dietaryPreferences: [...new Set(draft.dietaryPreferences)],
+    mixInIds: [...new Set(draft.mixInIds.length ? draft.mixInIds : draft.mixInId ? [draft.mixInId] : [])],
   };
 }
 
@@ -107,9 +108,15 @@ export function tutorialRecipePresentation(draft: TutorialDraft): { name: string
 }
 
 export function tutorialMixInItem(draft: TutorialDraft, ingredients: Ingredient[]): RecipeIngredient | null {
-  if (!draft.mixInId) return null;
-  const ingredient = ingredients.find((candidate) => candidate.id === draft.mixInId && candidate.category === 'mix-in');
+  const id = draft.mixInIds[0] ?? draft.mixInId;
+  if (!id) return null;
+  const ingredient = ingredients.find((candidate) => candidate.id === id && candidate.category === 'mix-in');
   return ingredient ? { ingredientId: ingredient.id, amount: ingredient.defaultAmount, unit: ingredient.defaultUnit } : null;
+}
+
+export function tutorialMixInItems(draft: TutorialDraft, ingredients: Ingredient[]): RecipeIngredient[] {
+  const ids = draft.mixInIds.length ? draft.mixInIds : draft.mixInId ? [draft.mixInId] : [];
+  return ids.map((id) => ingredients.find((candidate) => candidate.id === id && candidate.category === 'mix-in')).filter((ingredient): ingredient is Ingredient => Boolean(ingredient)).map((ingredient) => ({ ingredientId: ingredient.id, amount: ingredient.defaultAmount, unit: ingredient.defaultUnit }));
 }
 
 export const tutorialTextureGuidance: Record<TutorialTextureResult, { title: string; detail: string; next: string }> = {

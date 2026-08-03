@@ -133,7 +133,7 @@ export const freezeTimerSchema = z.object({
 });
 
 export const tutorialTextureResultSchema = z.enum(['perfect', 'powdery', 'icy', 'chalky', 'too-soft']);
-export const dietaryPreferenceSchema = z.enum(['vegan', 'vegetarian', 'gluten-free', 'no-added-sugar']);
+export const dietaryPreferenceSchema = z.enum(['vegan', 'vegetarian', 'dairy-free', 'gluten-free', 'no-added-sugar', 'high-protein', 'high-carb', 'high-fiber']);
 export const tutorialStageSchema = z.enum([
   'machine',
   'dietary',
@@ -162,6 +162,7 @@ const tutorialDraftV3Schema = z.object({
   itemAmounts: z.record(z.string(), z.number().positive()).default({}),
   manualAmountIds: z.array(z.string()).default([]),
   mixInId: z.string().nullable().default(null),
+  mixInIds: z.array(z.string()).default([]),
   textureResult: tutorialTextureResultSchema.nullable().default(null),
   finalTextureResult: tutorialTextureResultSchema.nullable().default(null),
   spinMinutes: z.number().int().min(1).max(10).default(2),
@@ -220,6 +221,7 @@ export const tutorialDraftSchema = z.union([tutorialDraftV3Schema, legacyTutoria
     itemAmounts: draft.itemAmounts,
     manualAmountIds: draft.manualAmountIds,
     mixInId: draft.mixInId,
+    mixInIds: draft.mixInId ? [draft.mixInId] : [],
     textureResult: draft.textureResult,
     recipeId: draft.recipeId,
   });
@@ -251,6 +253,7 @@ export const userSettingsSchema = z.object({
     itemAmounts: {},
     manualAmountIds: [],
     mixInId: null,
+    mixInIds: [],
     textureResult: null,
     finalTextureResult: null,
     spinMinutes: 2,

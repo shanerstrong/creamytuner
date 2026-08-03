@@ -44,7 +44,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Creamy Tuner to add a photo to your saved pint.",
+          "photosPermission": "Creamy Tuner would like to access your photos so you can choose or replace a photo for your saved pint.",
           "cameraPermission": "Allow Creamy Tuner to take a photo of your finished pint.",
           "microphonePermission": false
         }
