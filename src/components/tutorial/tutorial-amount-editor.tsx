@@ -27,16 +27,22 @@ export function TutorialAmountEditor({ item, ingredient, settings, recommendedAm
 
   const commit = (value = raw) => {
     const numeric = Number(value.replace(',', '.'));
-    if (!Number.isFinite(numeric) || numeric <= 0) {
+    if (!Number.isFinite(numeric) || numeric < 0) {
       setRaw(String(Number(converted.toFixed(2))));
+      return;
+    }
+    if (numeric === 0) {
+      if (onRemove) onRemove();
+      else setRaw(String(Number(converted.toFixed(2))));
       return;
     }
     onChange(Number(parseDisplayAmount(numeric, activeUnit, item.unit).amount.toFixed(2)), true);
   };
   const nudge = (direction: -1 | 1) => {
     const step = displayAmountStep(activeUnit);
-    const current = Number(raw.replace(',', '.')) || converted;
-    const next = Math.max(step, current + direction * step);
+    const parsed = Number(raw.replace(',', '.'));
+    const current = Number.isFinite(parsed) ? parsed : converted;
+    const next = Math.max(0, current + direction * step);
     setRaw(String(Number(next.toFixed(2))));
     commit(String(next));
   };

@@ -1,6 +1,7 @@
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 
 import { FooterCreamy } from '@/src/components/tutorial/footer-creamy';
+import { TutorialAmountEditor } from '@/src/components/tutorial/tutorial-amount-editor';
 import { seededIngredients } from '@/src/data/ingredients';
 import { machineById, machines } from '@/src/data/machines';
 import { estimateVolumeMl } from '@/src/domain/nutrition';
@@ -11,14 +12,23 @@ describe('first-pint tutorial', () => {
   test('existing settings default into the new welcome and tutorial', () => {
     const settings = userSettingsSchema.parse({ onboarded: true });
     expect(settings.onboardingVersion).toBeLessThan(CURRENT_ONBOARDING_VERSION);
-    expect(settings.tutorialDraft.step).toBe(0);
+    expect(settings.tutorialDraft.stage).toBe('machine');
   });
 
   test('old single-base drafts migrate without losing the amount', () => {
     const oldDraft = tutorialDraftSchema.parse({ version: 1, baseAdded: true, baseId: 'soy-milk', baseAmountMl: 325 });
     const migrated = normalizeTutorialDraft(oldDraft);
-    expect(migrated.version).toBe(2);
+    expect(migrated.version).toBe(3);
     expect(migrated.baseItems).toEqual([{ ingredientId: 'soy-milk', amount: 325, unit: 'ml' }]);
+  });
+
+  test('a kitchen-unit minus reaches zero and removes the ingredient', async () => {
+    const ingredient = seededIngredients.find((item) => item.id === 'milk-2');
+    expect(ingredient).toBeTruthy();
+    const onRemove = jest.fn();
+    const screen = await render(<TutorialAmountEditor item={{ ingredientId: 'milk-2', amount: 60, unit: 'ml' }} ingredient={ingredient!} settings={userSettingsSchema.parse({ units: 'us', measurementMode: 'kitchen' })} recommendedAmount={100} onChange={jest.fn()} onRemove={onRemove} />);
+    fireEvent.press(screen.getByLabelText('Decrease 2% Milk'));
+    expect(onRemove).toHaveBeenCalledTimes(1);
   });
 
   test('Creamy starts empty, then every selected base and ingredient fills him', () => {
@@ -75,7 +85,7 @@ describe('first-pint tutorial', () => {
     expect(tutorialTextureGuidance.powdery.detail).toContain('before adding liquid');
     expect(tutorialTextureGuidance.chalky.detail).toContain('spoon or silicone spatula');
     expect(tutorialTextureGuidance['too-soft'].next).toBe('Back to freezer');
-    expect(tutorialRecipePresentation(tutorialDraftSchema.parse({ flavorId: 'cocoa' })).imageKey).toBe('chocolate');
+    expect(tutorialRecipePresentation(tutorialDraftSchema.parse({ version: 1, flavorId: 'cocoa' })).imageKey).toBe('chocolate');
   });
 
   test('footer Creamy announces empty, progress, and overflow states', async () => {

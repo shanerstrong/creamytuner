@@ -132,7 +132,39 @@ export const freezeTimerSchema = z.object({
 });
 
 export const tutorialTextureResultSchema = z.enum(['perfect', 'powdery', 'icy', 'chalky', 'too-soft']);
-export const tutorialDraftSchema = z.object({
+export const tutorialStageSchema = z.enum([
+  'machine',
+  'base',
+  'helper',
+  'sweetener',
+  'flavor',
+  'blend',
+  'freeze',
+  'first-spin',
+  'evaluate',
+  'correction',
+  'mix-ins',
+  'respin',
+  'complete',
+]);
+
+const tutorialDraftV3Schema = z.object({
+  version: z.literal(3).default(3),
+  flowVersion: z.number().int().nonnegative().default(0),
+  stage: tutorialStageSchema.default('machine'),
+  machineId: z.string().default('nc501'),
+  baseItems: z.array(recipeIngredientSchema).default([]),
+  selectedIngredientIds: z.array(z.string()).default([]),
+  itemAmounts: z.record(z.string(), z.number().positive()).default({}),
+  manualAmountIds: z.array(z.string()).default([]),
+  mixInId: z.string().nullable().default(null),
+  textureResult: tutorialTextureResultSchema.default('perfect'),
+  recipeId: z.string().default(''),
+  disclosures: z.array(z.string()).default([]),
+  freezeTimerStartedAt: z.string().nullable().default(null),
+});
+
+const legacyTutorialDraftSchema = z.object({
   version: z.union([z.literal(1), z.literal(2)]).default(2),
   flowVersion: z.number().int().nonnegative().default(0),
   step: z.number().int().min(0).max(10).default(0),
@@ -153,6 +185,37 @@ export const tutorialDraftSchema = z.object({
   recipeId: z.string().default(''),
 });
 
+const legacyTutorialStages = ['machine', 'base', 'helper', 'sweetener', 'flavor', 'blend', 'freeze', 'first-spin', 'evaluate', 'correction', 'complete'] as const;
+
+export const tutorialDraftSchema = z.union([tutorialDraftV3Schema, legacyTutorialDraftSchema]).transform((draft) => {
+  if (draft.version === 3) return draft;
+  const baseItems = draft.baseItems.length
+    ? draft.baseItems
+    : draft.baseAdded
+      ? [{ ingredientId: draft.baseId, amount: draft.baseAmountMl, unit: 'ml' as const }]
+      : [];
+  const selectedIngredientIds = [...new Set([
+    ...draft.selectedIngredientIds,
+    draft.proteinId,
+    draft.helperId,
+    draft.sweetenerId,
+    draft.flavorId,
+  ].filter((id): id is string => Boolean(id)))];
+  return tutorialDraftV3Schema.parse({
+    version: 3,
+    flowVersion: draft.flowVersion,
+    stage: legacyTutorialStages[draft.step] ?? 'machine',
+    machineId: draft.machineId,
+    baseItems,
+    selectedIngredientIds,
+    itemAmounts: draft.itemAmounts,
+    manualAmountIds: draft.manualAmountIds,
+    mixInId: draft.mixInId,
+    textureResult: draft.textureResult,
+    recipeId: draft.recipeId,
+  });
+});
+
 export const userSettingsSchema = z.object({
   onboarded: z.boolean().default(false),
   machineId: z.string().default('nc501'),
@@ -170,24 +233,19 @@ export const userSettingsSchema = z.object({
   creamyPosition: z.object({ x: z.number(), y: z.number() }).default({ x: 0, y: 0 }),
   tutorialPintVisible: z.boolean().default(true),
   tutorialDraft: tutorialDraftSchema.default({
-    version: 2,
+    version: 3,
     flowVersion: 0,
-    step: 0,
+    stage: 'machine',
     machineId: 'nc501',
-    baseId: 'milk-2',
-    baseAdded: false,
-    baseAmountMl: 300,
     baseItems: [],
-    proteinId: null,
-    helperId: null,
-    sweetenerId: null,
-    flavorId: null,
     selectedIngredientIds: [],
     itemAmounts: {},
     manualAmountIds: [],
     mixInId: null,
     textureResult: 'perfect',
     recipeId: '',
+    disclosures: [],
+    freezeTimerStartedAt: null,
   }),
 });
 
@@ -209,6 +267,7 @@ export type BuilderMode = 'guided' | 'quick';
 export type GuidedBuilderDraft = NonNullable<UserSettings['guidedBuilderDraft']>;
 export type FreezeTimer = z.infer<typeof freezeTimerSchema>;
 export type TutorialDraft = z.infer<typeof tutorialDraftSchema>;
+export type TutorialStage = z.infer<typeof tutorialStageSchema>;
 export type TutorialTextureResult = z.infer<typeof tutorialTextureResultSchema>;
 export type TexturePreference = z.infer<typeof texturePreferenceSchema>;
 export type RecipeGoal = z.infer<typeof recipeGoalSchema>;

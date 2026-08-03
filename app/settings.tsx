@@ -53,13 +53,13 @@ export default function SettingsScreen() {
     <Screen>
       <AppHeader title="Settings" left={<IconButton icon="chevron-left" label="Go back" onPress={() => router.back()} />} />
       <View style={styles.list}>
-        <GlassCard style={styles.row}>
-          <Icon name="school-outline" color={palette.cyan} />
-          <View style={styles.copy}><Text style={styles.title}>Tutorial Mode</Text><Text style={styles.subtitle}>Show step-by-step help, fill guidance, and timer tips</Text></View>
-          <Switch value={settings.tutorialMode} onValueChange={(tutorialMode) => updateSettings({ tutorialMode })} trackColor={{ false: palette.panelRaised, true: palette.cyan }} thumbColor={palette.white} accessibilityLabel="Toggle beginner guidance" />
-        </GlassCard>
         <SettingRow icon="play-circle-outline" title="Replay first-pint tutorial" value="Walk through every step again" onPress={() => { void replayTutorial(); }} />
         <SettingRow icon="tune-vertical" title="Advanced builder" value="Start with full ingredient controls" onPress={() => router.push('/builder?advanced=1')} />
+        <GlassCard style={styles.row}>
+          <Icon name="cup-outline" color={palette.cyan} />
+          <View style={styles.copy}><Text style={styles.title}>Show Creamy</Text><Text style={styles.subtitle}>Display the animated fill helper during the tutorial</Text></View>
+          <Switch value={settings.creamyHelperEnabled} onValueChange={(creamyHelperEnabled) => updateSettings({ creamyHelperEnabled })} trackColor={{ false: palette.panelRaised, true: palette.cyan }} thumbColor={palette.white} accessibilityLabel="Toggle Creamy fill helper" />
+        </GlassCard>
         <SettingRow icon="ruler-square" title="Unit system" value={settings.units === 'metric' ? 'Metric (g, ml)' : 'US (oz, fl oz)'} onPress={() => updateSettings({ units: settings.units === 'metric' ? 'us' : 'metric' })} />
         <SettingRow icon="format-list-numbered" title="Measurement style" value={settings.measurementMode === 'kitchen' ? 'Kitchen-friendly (cups, tbsp, tsp)' : 'Exact amounts'} onPress={() => updateSettings({ measurementMode: settings.measurementMode === 'kitchen' ? 'exact' : 'kitchen' })} />
         <SettingRow icon="ice-cream" title="Default Machine" value={machine.shortName} onPress={() => router.push('/machines')} />

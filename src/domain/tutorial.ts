@@ -1,8 +1,9 @@
 import { estimateVolumeMl } from '@/src/domain/nutrition';
 import type { Ingredient, Recipe, RecipeIngredient, TutorialDraft, TutorialTextureResult } from '@/src/types';
 
-export const CURRENT_ONBOARDING_VERSION = 4;
-export const TUTORIAL_STEP_COUNT = 11;
+export const CURRENT_ONBOARDING_VERSION = 5;
+export const TUTORIAL_STAGES = ['machine', 'base', 'helper', 'sweetener', 'flavor', 'blend', 'freeze', 'first-spin', 'evaluate', 'correction', 'mix-ins', 'respin', 'complete'] as const;
+export const TUTORIAL_STEP_COUNT = TUTORIAL_STAGES.length;
 
 export type TutorialBaseTemplate = {
   id: 'balanced' | 'protein' | 'dairy-free';
@@ -18,12 +19,13 @@ export type TutorialRecommendation = {
 };
 
 export function normalizeTutorialDraft(draft: TutorialDraft): TutorialDraft {
-  const baseItems = draft.baseItems.length
-    ? draft.baseItems
-    : draft.baseAdded
-      ? [{ ingredientId: draft.baseId, amount: draft.baseAmountMl, unit: 'ml' as const }]
-      : [];
-  return { ...draft, version: 2, baseItems, baseAdded: baseItems.length > 0 };
+  return {
+    ...draft,
+    version: 3,
+    baseItems: draft.baseItems.map((item) => ({ ...item })),
+    selectedIngredientIds: [...new Set(draft.selectedIngredientIds)],
+    disclosures: [...new Set(draft.disclosures)],
+  };
 }
 
 export function tutorialBaseTemplates(capacityMl: number): TutorialBaseTemplate[] {
@@ -62,13 +64,7 @@ export function tutorialRecommendation(draft: TutorialDraft, ingredients: Ingred
 
 export function tutorialItems(draft: TutorialDraft, ingredients: Ingredient[]): RecipeIngredient[] {
   const normalized = normalizeTutorialDraft(draft);
-  const selected = [...new Set([
-    ...draft.selectedIngredientIds,
-    draft.proteinId,
-    draft.helperId,
-    draft.sweetenerId,
-    draft.flavorId,
-  ].filter((id): id is string => Boolean(id)))];
+  const selected = normalized.selectedIngredientIds;
   const items: RecipeIngredient[] = normalized.baseItems.map((item) => ({ ...item }));
   for (const id of selected) {
     if (!id) continue;
@@ -79,7 +75,8 @@ export function tutorialItems(draft: TutorialDraft, ingredients: Ingredient[]): 
 }
 
 export function fitTutorialBaseAmount(draft: TutorialDraft, ingredients: Ingredient[], capacityMl: number) {
-  const nonBase = tutorialItems({ ...draft, baseAmountMl: 1 }, ingredients).filter((item) => item.ingredientId !== draft.baseId);
+  const baseIds = new Set(draft.baseItems.map((item) => item.ingredientId));
+  const nonBase = tutorialItems(draft, ingredients).filter((item) => !baseIds.has(item.ingredientId));
   return Math.max(60, Math.floor(capacityMl * 0.88 - estimateVolumeMl(nonBase)));
 }
 
@@ -101,9 +98,9 @@ export function fitTutorialBaseItems(draft: TutorialDraft, ingredients: Ingredie
 }
 
 export function tutorialRecipePresentation(draft: TutorialDraft): { name: string; imageKey: Recipe['imageKey'] } {
-  if (draft.flavorId === 'cocoa') return { name: 'My First Chocolate Pint', imageKey: 'chocolate' };
-  if (draft.flavorId === 'banana') return { name: 'My First Banana Pint', imageKey: 'cookies' };
-  if (draft.flavorId === 'vanilla') return { name: 'My First Vanilla Pint', imageKey: 'cookies' };
+  if (draft.selectedIngredientIds.includes('cocoa')) return { name: 'My First Chocolate Pint', imageKey: 'chocolate' };
+  if (draft.selectedIngredientIds.includes('banana')) return { name: 'My First Banana Pint', imageKey: 'cookies' };
+  if (draft.selectedIngredientIds.includes('vanilla')) return { name: 'My First Vanilla Pint', imageKey: 'cookies' };
   return { name: 'My First Strawberry Pint', imageKey: 'strawberry' };
 }
 

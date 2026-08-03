@@ -27,7 +27,7 @@ export default function HomeScreen() {
         <GradientButton title="Build my pint" icon="arrow-right" onPress={() => router.push('/builder')} />
         {settings.firstPintCompleted ? <View style={styles.replayButton}><GradientButton title="Replay first-pint tutorial" icon="school-outline" variant="secondary" onPress={() => {
           const tutorialDraft = tutorialDraftSchema.parse({ machineId: settings.machineId, flowVersion: CURRENT_ONBOARDING_VERSION });
-          void updateSettings({ onboarded: false, tutorialDraft }).then(() => router.replace('/tutorial'));
+          void updateSettings({ onboarded: false, onboardingVersion: CURRENT_ONBOARDING_VERSION - 1, tutorialDraft }).then(() => router.replace('/'));
         }} /></View> : null}
         {settings.guidedBuilderDraft ? <GlassCard style={styles.resumeCard} onPress={() => router.push('/builder?resume=1')} accessibilityLabel={`Resume ${draftSummary(settings.guidedBuilderDraft)}`}><Icon name="history" color={palette.cyan} /><View style={styles.resumeCopy}><Text style={styles.resumeTitle}>Continue where you left off</Text><Text style={styles.resumeDetail}>{draftSummary(settings.guidedBuilderDraft)}</Text></View></GlassCard> : null}
       </View>
