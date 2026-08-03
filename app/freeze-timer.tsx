@@ -65,7 +65,7 @@ export default function FreezeTimerScreen() {
   return (
     <Screen contentStyle={styles.screenContent}>
       <AppHeader title={activeTimer ? 'Freeze timer' : 'Pint complete'} left={<IconButton icon="chevron-left" label="Go back" onPress={() => router.replace(`/recipe/${recipe.id}`)} />} />
-      <ImageBackground source={recipeImages[recipe.imageKey]} style={styles.hero} imageStyle={styles.heroImage}>
+      <ImageBackground source={recipe.photoUri ? { uri: recipe.photoUri } : recipeImages[recipe.imageKey]} style={styles.hero} imageStyle={styles.heroImage}>
         <LinearGradient colors={['transparent', 'rgba(8,12,31,0.98)']} style={StyleSheet.absoluteFill} />
         <View style={styles.heroCopy}><View style={styles.check}><Icon name="check" size={34} /></View><Text style={styles.heroTitle}>{activeTimer ? recipe.name : 'Your pint is built.'}</Text><Text style={styles.heroText}>{activeTimer ? 'Keep it flat while it freezes.' : 'Put it in the freezer when you are ready.'}</Text></View>
       </ImageBackground>

@@ -98,7 +98,7 @@ export default function BuilderScreen() {
   const submit = async () => {
     const selected = new Set(items.map((item) => item.ingredientId));
     const imageKey: Recipe['imageKey'] = selected.has('cocoa') ? 'chocolate' : selected.has('peppermint') ? 'mint' : selected.has('cookie-pieces') ? 'cookies' : 'strawberry';
-    const recipe = generateRecipe({ name, style: recipeStyle, items, ingredients, existingId: source?.id, imageKey: source?.imageKey ?? imageKey, favorite: source?.favorite });
+    const recipe = generateRecipe({ name, style: recipeStyle, items, ingredients, existingId: source?.id, imageKey: source?.imageKey ?? imageKey, photoUri: source?.photoUri, favorite: source?.favorite });
     if (source) recipe.createdAt = source.createdAt;
     await saveRecipe(recipe);
     await updateSettings({ firstPintCompleted: true, guidedBuilderDraft: null });

@@ -42,6 +42,14 @@
       "expo-sqlite",
       "expo-asset",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Creamy Tuner to add a photo to your saved pint.",
+          "cameraPermission": "Allow Creamy Tuner to take a photo of your finished pint.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-notifications",
         {
           "color": "#F14E9B",

@@ -150,7 +150,7 @@ export function NutritionStrip({ nutrition, compact = false }: { nutrition: Nutr
 export function RecipeCard({ recipe, onPress, onFavorite, wide = false }: { recipe: Recipe; onPress: () => void; onFavorite?: () => void; wide?: boolean }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.recipeCard, wide && styles.recipeCardWide, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`Open ${recipe.name}`}>
-      <ImageBackground source={recipeImages[recipe.imageKey]} style={styles.recipeImage} imageStyle={styles.recipeImageRadius}>
+      <ImageBackground source={recipe.photoUri ? { uri: recipe.photoUri } : recipeImages[recipe.imageKey]} style={styles.recipeImage} imageStyle={styles.recipeImageRadius}>
         <LinearGradient colors={['transparent', 'rgba(5, 8, 24, 0.95)']} style={StyleSheet.absoluteFill} />
         {recipe.isTemplate ? <View style={styles.templateBadge}><Text style={styles.templateBadgeText}>Starter template</Text></View> : null}
         {onFavorite ? <Pressable onPress={(event) => { event.stopPropagation(); onFavorite(); }} style={styles.recipeFavorite} accessibilityLabel={recipe.favorite ? 'Remove favorite' : 'Add favorite'}><Icon name={recipe.favorite ? 'heart' : 'heart-outline'} size={21} color={recipe.favorite ? palette.pink : palette.white} /></Pressable> : null}

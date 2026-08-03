@@ -99,6 +99,7 @@ export function generateRecipe(input: {
   ingredients: Ingredient[];
   existingId?: string;
   imageKey?: Recipe['imageKey'];
+  photoUri?: string;
   favorite?: boolean;
 }): Recipe {
   const now = new Date().toISOString();
@@ -118,6 +119,7 @@ export function generateRecipe(input: {
     favorite: input.favorite ?? false,
     isTemplate: false,
     imageKey: input.imageKey ?? 'strawberry',
+    photoUri: input.photoUri ?? '',
     createdAt: now,
     updatedAt: now,
   };
