@@ -10,10 +10,9 @@ import { TutorialAmountEditor } from '@/src/components/tutorial/tutorial-amount-
 import { GlassCard, GradientButton, Icon, LoadingScreen, Screen, SearchField, type IconName } from '@/src/components/ui';
 import { machineById, machines } from '@/src/data/machines';
 import { createFreezeTimer } from '@/src/domain/freeze-timer';
-import { getPintFillState } from '@/src/domain/fill';
 import { generateRecipe, recommendProgram, validateRecipe } from '@/src/domain/generator';
 import { estimateVolumeMl } from '@/src/domain/nutrition';
-import { CURRENT_ONBOARDING_VERSION, TUTORIAL_STAGES, fitTutorialBaseItems, normalizeTutorialDraft, tutorialBaseTemplates, tutorialItems, tutorialMixInItems, tutorialRecipePresentation, tutorialTextureGuidance } from '@/src/domain/tutorial';
+import { CURRENT_ONBOARDING_VERSION, TUTORIAL_STAGES, normalizeTutorialDraft, tutorialBaseTemplates, tutorialItems, tutorialMixInItems, tutorialRecipePresentation, tutorialTextureGuidance } from '@/src/domain/tutorial';
 import { useApp } from '@/src/providers/app-provider';
 import { scheduleFreezeReminder } from '@/src/services/freeze-reminder';
 import { choosePintPhoto, type PintPhotoSource } from '@/src/services/pint-photo';
@@ -49,22 +48,21 @@ const HELPER_CHOICES: Choice[] = [
 ];
 
 const SWEETENER_CHOICES: Choice[] = [
-  { id: 'allulose', title: 'Allulose', detail: 'Softer lower-calorie freeze', icon: 'shaker-outline', tone: 'pink' },
   { id: 'sugar', title: 'Sugar', detail: 'Classic sweetness', icon: 'shaker', tone: 'lavender' },
   { id: 'brown-sugar', title: 'Brown sugar', detail: 'Caramel-like flavor', icon: 'shaker-outline', tone: 'gold' },
   { id: 'honey', title: 'Honey', detail: 'Warm liquid sweetness', icon: 'beehive-outline', tone: 'mint' },
   { id: 'maple-syrup', title: 'Maple syrup', detail: 'Rich maple sweetness', icon: 'bottle-tonic-outline', tone: 'gold' },
-  { id: 'erythritol', title: 'Erythritol', detail: 'Low-calorie with a cool finish', icon: 'shaker-outline', tone: 'lavender' },
+  { id: 'allulose', title: 'Allulose', detail: 'Softer lower-calorie freeze', icon: 'shaker-outline', tone: 'pink' },
   { id: 'monk-fruit', title: 'Monk fruit blend', detail: 'Check the package conversion', icon: 'leaf', tone: 'mint' },
-  { id: 'stevia', title: 'Stevia blend', detail: 'Very sweet — use sparingly', icon: 'sprout', tone: 'pink' },
-  { id: 'agave', title: 'Agave', detail: 'Smooth liquid sweetness', icon: 'water-outline', tone: 'gold' },
 ];
 
 const FLAVOR_CHOICES: Choice[] = [
   { id: 'strawberries', title: 'Strawberry', detail: 'Bright and beginner-friendly', icon: 'fruit-cherries', tone: 'pink' },
-  { id: 'cocoa', title: 'Chocolate', detail: 'Deep cocoa flavor', icon: 'food-variant', tone: 'lavender' },
+  { id: 'cocoa', title: 'Cacao powder', detail: 'Unsweetened chocolate flavor', icon: 'food-variant', tone: 'lavender' },
   { id: 'vanilla', title: 'Vanilla', detail: 'Simple and flexible', icon: 'flower-outline', tone: 'gold' },
   { id: 'banana', title: 'Banana', detail: 'Sweet with extra body', icon: 'food-apple-outline', tone: 'mint' },
+  { id: 'blueberries', title: 'Blueberries', detail: 'Bright berry flavor', icon: 'fruit-cherries', tone: 'lavender' },
+  { id: 'pb2-original', title: 'PB2 peanut powder', detail: 'Nutty flavor with protein', icon: 'peanut-outline', tone: 'gold' },
 ];
 
 const MIX_IN_CHOICES: Choice[] = [
@@ -140,7 +138,7 @@ export default function TutorialScreen() {
   const previewRecipe = useMemo(() => makeTutorialRecipe(draft, items, ingredients), [draft, ingredients, items]);
   const program = useMemo(() => recommendProgram(previewRecipe, machine.id), [machine.id, previewRecipe]);
   const mixIns = tutorialMixInItems(draft, ingredients);
-  const mascotItems = mixIns.length && TUTORIAL_STAGES.indexOf(draft.stage) >= TUTORIAL_STAGES.indexOf('mix-ins') ? [...items, ...mixIns] : items;
+  const mascotItems = mixIns.length && TUTORIAL_STAGES.indexOf(draft.stage) >= TUTORIAL_STAGES.indexOf('second-cycle-additions') ? [...items, ...mixIns] : items;
   const mascotAmount = estimateVolumeMl(mascotItems);
 
   if (!ready) return <LoadingScreen />;
@@ -165,7 +163,7 @@ export default function TutorialScreen() {
   const chooseTutorialIngredient = (ingredient: Ingredient) => {
     if (ingredient.category === 'base') {
       if (!draft.baseItems.some((item) => item.ingredientId === ingredient.id)) patchDraft({ baseItems: [...draft.baseItems, { ingredientId: ingredient.id, amount: ingredient.defaultAmount, unit: ingredient.defaultUnit }] });
-    } else if (draft.stage === 'mix-ins' && ingredient.category === 'mix-in') {
+    } else if (draft.stage === 'second-cycle-additions' && ingredient.category === 'mix-in') {
       patchDraft({ mixInIds: draft.mixInIds.includes(ingredient.id) ? draft.mixInIds : [...draft.mixInIds, ingredient.id], mixInId: ingredient.id });
     } else if (!draft.selectedIngredientIds.includes(ingredient.id)) {
       patchDraft({ selectedIngredientIds: [...draft.selectedIngredientIds, ingredient.id], itemAmounts: { ...draft.itemAmounts, [ingredient.id]: ingredient.defaultAmount } });
@@ -257,6 +255,33 @@ export default function TutorialScreen() {
       itemAmounts: { ...draft.itemAmounts, [id]: amount },
     });
     animateAddition(kind);
+  };
+
+  const applyCorrection = () => {
+    if (draft.correctionDecision === 'apply') return;
+    if (draft.textureResult === 'too-soft') {
+      patchDraft({ correctionDecision: 'apply', correctiveIngredientIds: [] });
+      return;
+    }
+    const base = draft.baseItems[0];
+    if (!base) return;
+    patchDraft({
+      baseItems: draft.baseItems.map((item, index) => index === 0 ? { ...item, amount: item.amount + 15 } : item),
+      correctionDecision: 'apply',
+      correctiveIngredientIds: [base.ingredientId],
+    });
+    animateAddition('liquid');
+  };
+
+  const skipCorrection = () => {
+    const correctiveId = draft.correctiveIngredientIds[0];
+    patchDraft({
+      baseItems: draft.correctionDecision === 'apply' && correctiveId
+        ? draft.baseItems.map((item) => item.ingredientId === correctiveId ? { ...item, amount: Math.max(1, item.amount - 15) } : item)
+        : draft.baseItems,
+      correctionDecision: 'skip',
+      correctiveIngredientIds: [],
+    });
   };
 
   const changeAmount = (id: string, amount: number, manual: boolean) => {
@@ -367,7 +392,8 @@ export default function TutorialScreen() {
     || (draft.stage === 'base' && draft.baseItems.length === 0)
     || (draft.stage === 'blend' && validation.errors.length > 0)
     || (draft.stage === 'evaluate' && !draft.textureResult)
-    || (draft.stage === 'respin' && !draft.finalTextureResult);
+    || (draft.stage === 'second-cycle-additions' && draft.textureResult !== 'perfect' && draft.correctionDecision === 'pending')
+    || (draft.stage === 'final-check' && !draft.finalTextureResult);
   const editorIngredient = editorId ? ingredients.find((ingredient) => ingredient.id === editorId) : undefined;
   const editorItem = editorId ? itemFor(draft, ingredients, editorId) : undefined;
   const editorIds = draft.stage === 'base'
@@ -385,6 +411,14 @@ export default function TutorialScreen() {
       return setEditorId(null);
     }
     if (draft.stage === 'machine') return router.replace('/');
+    if (draft.stage === 'second-cycle-additions' && draft.correctionDecision === 'apply' && draft.correctiveIngredientIds[0]) {
+      const correctiveId = draft.correctiveIngredientIds[0];
+      return transitionTo('evaluate', {
+        baseItems: draft.baseItems.map((item) => item.ingredientId === correctiveId ? { ...item, amount: Math.max(1, item.amount - 15) } : item),
+        correctionDecision: 'pending',
+        correctiveIngredientIds: [],
+      });
+    }
     transitionTo(previousStage);
   };
 
@@ -396,6 +430,10 @@ export default function TutorialScreen() {
       return setEditorId(null);
     }
     if (draft.stage === 'complete') return void finishTutorial();
+    if (draft.stage === 'second-cycle-additions') {
+      const secondCycleProgram = draft.textureResult !== 'perfect' ? 'respin' as const : draft.mixInIds.length ? 'mix-in' as const : null;
+      return transitionTo('second-cycle', { secondCycleProgram });
+    }
     transitionTo(nextStage);
   };
 
@@ -443,7 +481,8 @@ export default function TutorialScreen() {
         if (mixInIds.includes(mixInId)) animateAddition('mix-in');
       }
     },
-    onFit: () => patchDraft({ baseItems: fitTutorialBaseItems(draft, ingredients, machine.capacityMl) }),
+    onApplyCorrection: applyCorrection,
+    onSkipCorrection: skipCorrection,
     onTakePhoto: () => { void addPintPhoto('camera'); },
     onChoosePhoto: () => { void addPintPhoto('library'); },
     onCustomIngredient: setCustomCategory,
@@ -498,7 +537,8 @@ type StageProps = {
   onDisclosure: (id: string) => void;
   onPatch: (patch: Partial<TutorialDraft>) => void;
   onMixIn: (id: string | null) => void;
-  onFit: () => void;
+  onApplyCorrection: () => void;
+  onSkipCorrection: () => void;
   onTakePhoto: () => void;
   onChoosePhoto: () => void;
   onCustomIngredient: (category: IngredientCategory) => void;
@@ -507,18 +547,16 @@ type StageProps = {
 };
 
 function renderStage(props: StageProps) {
-  const { draft, compact, ingredients, machine, items, validation, program, timerMessage, onMachine, onToggleDietary, onApplyBase, onToggleBase, onToggleIngredient, onAddFill, onEdit, onDisclosure, onPatch, onMixIn, onFit, onTakePhoto, onChoosePhoto, onCustomIngredient, onViewMore, photoBusy } = props;
+  const { draft, compact, ingredients, machine, items, validation, program, timerMessage, onMachine, onToggleDietary, onApplyBase, onToggleBase, onToggleIngredient, onAddFill, onEdit, onDisclosure, onPatch, onMixIn, onApplyCorrection, onSkipCorrection, onTakePhoto, onChoosePhoto, onCustomIngredient, onViewMore, photoBusy } = props;
   const names = (ids: string[]) => ids.map((id) => ingredients.find((item) => item.id === id)?.name).filter(Boolean).join(', ');
   const disclose = (id: string) => draft.disclosures.includes(id);
 
   if (draft.stage === 'machine') {
-    const open = disclose('machines');
     const otherChoices = machines.map((item, index) => ({ id: item.id, title: item.shortName, detail: item.subtitle, icon: index < 3 ? 'ice-cream' as IconName : 'cup' as IconName, tone: (['pink', 'lavender', 'mint', 'gold'][index % 4]) as Choice['tone'] }));
-    const orderedChoices = [...otherChoices.filter((choice) => choice.id !== draft.machineId), ...otherChoices.filter((choice) => choice.id === draft.machineId)];
-    return <Page icon="ice-cream" eyebrow="ONE QUICK SETUP" title="Which machine do you have?" intro="Choose one machine. We use it to set the correct fill line and program."><MachineChoiceGrid choices={orderedChoices} selected={draft.machineId} open={open} onOpen={() => onDisclosure('machines')} onSelect={onMachine} onClose={() => onDisclosure('machines')} /></Page>;
+    return <Page icon="ice-cream" eyebrow="ONE QUICK SETUP" title="Which machine do you have?"><MachineChoiceGrid choices={otherChoices} selected={draft.machineId} onSelect={onMachine} /></Page>;
   }
 
-  if (draft.stage === 'dietary') return <Page icon="leaf" eyebrow="OPTIONAL PREFERENCES" title="Any dietary preferences?" intro="Choose any that apply. Recommendations will follow them."><ChoicePager choices={DIETARY_CHOICES} selected={draft.dietaryPreferences} compact={compact} multi onPress={onToggleDietary} /><Text style={styles.optionalHint}>Optional · you can skip this</Text></Page>;
+  if (draft.stage === 'dietary') return <Page icon="leaf" eyebrow="OPTIONAL PREFERENCES" title="Any dietary preferences?"><ChoicePager choices={DIETARY_CHOICES} selected={draft.dietaryPreferences} compact={compact} multi allVisible dense onPress={onToggleDietary} /><Text style={styles.optionalHint}>Optional · you can skip this</Text></Page>;
 
   if (draft.stage === 'base') {
     const selected = draft.baseItems.map((item) => item.ingredientId);
@@ -529,7 +567,7 @@ function renderStage(props: StageProps) {
     const recommendedApplied = recommended.every((item) => selected.includes(item.ingredientId));
     const open = disclose('base-options');
     const choices = [...BASE_CHOICES, { id: 'recommended-base', title: recommendedTemplate.title, detail: recommendedDetail, icon: 'creation' as IconName, tone: 'pink' as const }];
-    return <Page icon="cup-water" eyebrow="STEP 1 · BASE" title="Start with your milk" intro="Use our easiest blend or combine any bases you like.">{open ? <><DisclosureButton label="Close base choices" open onPress={() => onDisclosure('base-options')} /><SmoothReveal><ChoicePager choices={choices} selected={[...selected, ...(recommendedApplied ? ['recommended-base'] : [])]} compact={compact} multi recommendedId="recommended-base" onPress={(id) => id === 'recommended-base' ? onApplyBase() : onToggleBase(id)} /><LibraryActions category="base" onCustom={onCustomIngredient} onViewMore={onViewMore} /></SmoothReveal></> : <><RecommendationCard title={recommendedTemplate.title} detail={recommendedDetail} action={recommendedApplied ? 'Recommended base added' : 'Use this base'} active={recommendedApplied} onPress={onApplyBase} /><DisclosureButton label="Other base choices" open={false} onPress={() => onDisclosure('base-options')} /></>}<AdjustButton ids={selected} label={selected.length ? `${selected.length} base${selected.length === 1 ? '' : 's'} selected` : 'No base selected'} names={names(selected)} onPress={() => selected[0] && onEdit(selected[0])} /></Page>;
+    return <Page icon="cup-water" eyebrow="STEP 1 · BASE" title="Start with your milk">{open ? <><DisclosureButton label="Close base choices" open onPress={() => onDisclosure('base-options')} /><SmoothReveal><LibraryActions category="base" onCustom={onCustomIngredient} onViewMore={onViewMore} /><ChoicePager choices={choices} selected={[...selected, ...(recommendedApplied ? ['recommended-base'] : [])]} compact={compact} multi allVisible dense recommendedId="recommended-base" onPress={(id) => id === 'recommended-base' ? onApplyBase() : onToggleBase(id)} /></SmoothReveal></> : <><RecommendationCard title={recommendedTemplate.title} detail={recommendedDetail} action={recommendedApplied ? 'Recommended base added' : 'Use this base'} active={recommendedApplied} onPress={onApplyBase} /><DisclosureButton label="Other base choices" open={false} onPress={() => onDisclosure('base-options')} /></>}<AdjustButton ids={selected} label={selected.length ? `${selected.length} base${selected.length === 1 ? '' : 's'} selected` : 'No base selected'} names={names(selected)} onPress={() => selected[0] && onEdit(selected[0])} /></Page>;
   }
 
   if (draft.stage === 'helper') return <IngredientStage draft={draft} compact={compact} title="Add creamy texture" eyebrow="STEP 2 · TEXTURE" intro="Pudding mix is the easiest starting point. This step is optional." recommendedId="jello-vanilla-zero" recommendedTitle="Vanilla pudding mix" recommendedDetail="Adds body with one small measured amount" choices={HELPER_CHOICES} group={groupIds.helper} kind="spoon" ingredients={ingredients} onToggle={onToggleIngredient} onEdit={onEdit} onDisclosure={onDisclosure} onCustom={onCustomIngredient} onViewMore={onViewMore} />;
@@ -537,14 +575,13 @@ function renderStage(props: StageProps) {
   if (draft.stage === 'flavor') return <IngredientStage draft={draft} compact={compact} title="Make it taste good" eyebrow="STEP 4 · FLAVOR" intro="Strawberry is forgiving, but you can combine flavors." recommendedId="strawberries" recommendedTitle="Strawberry" recommendedDetail="Bright fruit that blends smoothly" choices={FLAVOR_CHOICES} group={groupIds.flavor} kind="fruit" ingredients={ingredients} onToggle={onToggleIngredient} onEdit={onEdit} onDisclosure={onDisclosure} onCustom={onCustomIngredient} onViewMore={onViewMore} />;
 
   if (draft.stage === 'blend') {
-    const fill = getPintFillState(validation.estimatedVolumeMl, machine.capacityMl);
-    const hasRoom = fill.percent < 88 && !validation.errors.length;
+    const hasRoom = validation.estimatedVolumeMl < machine.capacityMl * 0.88 && !validation.errors.length;
     const fillOpen = disclose('fill-options');
-    const remaining = Math.max(0, machine.capacityMl - validation.estimatedVolumeMl);
-    return <Page icon="blender" eyebrow="MIX + CHECK" title="Blend until completely smooth" intro="Creamy shows the estimated level before anything goes into the freezer."><GlassCard style={[styles.fillCard, fill.status === 'overflow' && styles.dangerCard]}><View style={styles.fillTop}><View><Text style={styles.fillAmount}>{validation.estimatedVolumeMl} ml</Text><Text style={styles.fillLabel}>estimated fill</Text></View><View style={[styles.fillBadge, fill.status === 'overflow' && styles.fillBadgeDanger]}><Text style={styles.fillBadgeText}>{fill.status === 'overflow' ? 'TOO FULL' : `${fill.percent}%`}</Text></View></View><View style={styles.fillTrack}><View style={[styles.fillProgress, { width: `${fill.visualPercent}%` }, fill.status === 'overflow' && styles.fillProgressDanger]} /></View><Text style={styles.fillGuidance}>{fill.guidance}</Text></GlassCard>{validation.errors.length ? <GradientButton title="Fit this container" icon="arrow-collapse" onPress={onFit} /> : null}{hasRoom ? <>{fillOpen ? <><DisclosureButton label="Close add-ins" open onPress={() => onDisclosure('fill-options')} /><SmoothReveal><Text style={styles.roomText}>About {remaining} ml remains below the fill line.</Text><ChoicePager choices={FILL_CHOICES} selected={selectedFrom(draft, FILL_CHOICES.map((choice) => choice.id))} compact={compact} multi onPress={(id) => onAddFill(id, id === 'strawberries' || id === 'banana' ? 'fruit' : 'spoon')} /><LibraryActions category="all" onCustom={onCustomIngredient} onViewMore={onViewMore} /></SmoothReveal></> : <DisclosureButton label="There is room — add something" open={false} onPress={() => onDisclosure('fill-options')} />}</> : null}<DisclosureButton label="See what you added" open={disclose('blend-summary')} onPress={() => onDisclosure('blend-summary')} />{disclose('blend-summary') ? <SmoothReveal><Text style={styles.summaryText}>{items.map((item) => ingredients.find((ingredient) => ingredient.id === item.ingredientId)?.name).filter(Boolean).join(' · ')}</Text></SmoothReveal> : null}</Page>;
+    const lastItem = items[items.length - 1];
+    return <Page icon="blender" eyebrow="MIX + CHECK" title="Blend until completely smooth">{validation.errors.length ? <GlassCard style={styles.overflowAlert}><Icon name="alert-circle-outline" color={palette.danger} size={28} /><View style={styles.flex}><Text style={styles.overflowTitle}>Creamy is too full</Text><Text style={styles.overflowText}>Lower one amount before freezing.</Text></View></GlassCard> : null}{validation.errors.length && lastItem ? <GradientButton title="Remove something" icon="minus-circle-outline" onPress={() => onEdit(lastItem.ingredientId)} /> : null}{hasRoom ? <>{fillOpen ? <><DisclosureButton label="Close add-ins" open onPress={() => onDisclosure('fill-options')} /><SmoothReveal><LibraryActions category="all" onCustom={onCustomIngredient} onViewMore={onViewMore} /><ChoicePager choices={FILL_CHOICES} selected={selectedFrom(draft, FILL_CHOICES.map((choice) => choice.id))} compact={compact} multi allVisible dense onPress={(id) => onAddFill(id, id === 'strawberries' || id === 'banana' ? 'fruit' : 'spoon')} /></SmoothReveal></> : <DisclosureButton label="Add something else" open={false} onPress={() => onDisclosure('fill-options')} />}</> : null}<DisclosureButton label="See what you added" open={disclose('blend-summary')} onPress={() => onDisclosure('blend-summary')} />{disclose('blend-summary') ? <SmoothReveal><Text style={styles.summaryText}>{items.map((item) => ingredients.find((ingredient) => ingredient.id === item.ingredientId)?.name).filter(Boolean).join(' · ')}</Text></SmoothReveal> : null}</Page>;
   }
 
-  if (draft.stage === 'freeze') { const freezeOpen = disclose('freeze-why'); return <Page icon="snowflake" eyebrow="FREEZE FLAT" title="Freeze for 24 hours" intro="Put the storage lid on and keep the pint upright on a level shelf."><DisclosureButton label="Why a full 24 hours?" open={freezeOpen} onPress={() => onDisclosure('freeze-why')} /><CollapsibleInstructions open={freezeOpen} steps={['Blend the base completely smooth before freezing.', 'Seal the pint with its storage lid.', 'Keep the pint upright on a flat, level freezer shelf.', 'Freeze for the full 24 hours so the center becomes completely solid.', 'Before processing, confirm the surface is firm and did not freeze at an angle.', 'If the pint is tilted or partly soft, level it and continue freezing before using the machine.']} /></Page>; }
+  if (draft.stage === 'freeze') { const freezeOpen = disclose('freeze-why'); return <Page icon="snowflake" eyebrow="FREEZE FLAT" title="Freeze for 24 hours"><DisclosureButton label="Why a full 24 hours?" open={false} onPress={() => onDisclosure('freeze-why')} /><FullInstructionOverlay open={freezeOpen} label="Why a full 24 hours?" steps={['Blend the base completely smooth before freezing.', 'Seal the pint with its storage lid.', 'Keep the pint upright on a flat, level freezer shelf.', 'Freeze for the full 24 hours so the center becomes completely solid.', 'Before processing, confirm the surface is firm and did not freeze at an angle.', 'If the pint is tilted or partly soft, level it and continue freezing before using the machine.']} onClose={() => onDisclosure('freeze-why')} /></Page>; }
 
   if (draft.stage === 'first-spin') {
     const displayTime = `${String(draft.spinMinutes).padStart(2, '0')}:00`;
@@ -554,23 +591,25 @@ function renderStage(props: StageProps) {
   }
 
   if (draft.stage === 'evaluate') {
-    const toggleResult = (id: string) => onPatch({ textureResult: draft.textureResult === id ? null : id as TutorialTextureResult });
-    if (draft.textureResult && draft.textureResult !== 'perfect') return <TextureFixPage result={draft.textureResult} onLooksGood={() => onPatch({ textureResult: 'perfect' })} onChooseDifferent={() => onPatch({ textureResult: null })} />;
-    return <Page icon="eye-outline" eyebrow="FIRST RESULT" title="How did the first spin turn out?" intro="Choose the closest answer. Tap the selected answer again to clear it."><TextureChoiceList selected={draft.textureResult} onPress={toggleResult} /></Page>;
+    const toggleResult = (id: string) => onPatch({ textureResult: draft.textureResult === id ? null : id as TutorialTextureResult, correctionDecision: 'pending', correctiveIngredientIds: [], mixInIds: [], mixInId: null, secondCycleProgram: null });
+    return <Page icon="eye-outline" eyebrow="FIRST RESULT" title="How did the first spin turn out?"><TextureChoiceList selected={draft.textureResult} onPress={toggleResult} /></Page>;
   }
 
-  if (draft.stage === 'mix-ins') {
-    const selected = draft.mixInIds.length ? draft.mixInIds : ['no-mix-ins'];
-    const open = disclose('mix-in-options');
-    const choices = [...MIX_IN_CHOICES, { id: 'no-mix-ins', title: 'No mix-ins', detail: 'Keep the texture as-is', icon: 'check-circle-outline' as IconName, tone: 'mint' as const }];
-    return <Page icon="cookie-outline" eyebrow="OPTIONAL MIX-INS" title="Want chunks or crunch?" intro={draft.mixInIds.length ? 'Add one small combined handful, make a hole in the center, then press the Mix-In button once.' : 'Skip this when you like the pint exactly as it is.'}>{open ? <><DisclosureButton label="Close mix-in choices" open onPress={() => onDisclosure('mix-in-options')} /><SmoothReveal><ChoicePager choices={choices} selected={selected} compact={compact} multi recommendedId="no-mix-ins" onPress={(id) => onMixIn(id === 'no-mix-ins' ? null : id)} /><LibraryActions category="mix-in" onCustom={onCustomIngredient} onViewMore={onViewMore} /></SmoothReveal></> : <><RecommendationCard title="No mix-ins" detail="Scoop the pint exactly as it is" action={!draft.mixInIds.length ? 'Selected' : 'Choose no mix-ins'} active={!draft.mixInIds.length} onPress={() => onMixIn(null)} /><DisclosureButton label="Show mix-in choices" open={false} onPress={() => onDisclosure('mix-in-options')} /></>}{draft.mixInIds.length ? <View style={styles.mixInstruction}><Icon name="gesture-tap-button" color={palette.cyan} /><Text style={styles.mixInstructionText}>{draft.mixInIds.length} mix-in{draft.mixInIds.length === 1 ? '' : 's'} selected. Add one small combined handful, then press Mix-In once.</Text></View> : null}</Page>;
+  if (draft.stage === 'second-cycle-additions') {
+    const needsCorrection = draft.textureResult !== 'perfect';
+    const guidance = draft.textureResult ? tutorialTextureGuidance[draft.textureResult] : null;
+    const correctionAction = draft.textureResult === 'too-soft' ? 'I refroze it solid' : 'Add 1 tbsp of my base';
+    return <Page icon="auto-fix" eyebrow="PREPARE FINAL CYCLE" title="Add everything before the last run">{needsCorrection && guidance ? <><GlassCard style={styles.correctionCard}><Text style={styles.correctionTitle}>{guidance.title}</Text><Text style={styles.correctionText}>{guidance.detail}</Text></GlassCard><RecommendationCard title={correctionAction} detail={draft.textureResult === 'too-soft' ? 'Continue only when the pint is completely firm and level.' : 'Creamy Tuner will add 15 ml to the saved recipe.'} action={draft.correctionDecision === 'apply' ? 'Confirmed' : 'Confirm correction'} active={draft.correctionDecision === 'apply'} onPress={onApplyCorrection} />{draft.correctionDecision !== 'apply' ? <Pressable onPress={onSkipCorrection} accessibilityRole="button" style={styles.skipCorrection}><Text style={styles.skipCorrectionText}>{draft.correctionDecision === 'skip' ? 'Correction skipped' : 'Skip this correction'}</Text></Pressable> : null}</> : <GlassCard style={styles.readyCard}><Icon name="check-circle-outline" color={palette.success} size={26} /><Text style={styles.readyCardText}>The texture is ready. Mix-ins are optional.</Text></GlassCard>}<Text style={styles.sectionLabel}>Optional mix-ins · choose any</Text><LibraryActions category="mix-in" onCustom={onCustomIngredient} onViewMore={onViewMore} /><ChoicePager choices={MIX_IN_CHOICES} selected={draft.mixInIds} compact={compact} multi allVisible dense onPress={onMixIn} />{needsCorrection && draft.mixInIds.length ? <Text style={styles.manualFoldNote}>Re-Spin handles the correction. Fold hard chunks in by hand afterward so this stays the final machine cycle.</Text> : null}</Page>;
   }
 
-  if (draft.stage === 'respin') {
-    const finalGuidance = draft.finalTextureResult ? tutorialTextureGuidance[draft.finalTextureResult] : null;
+  if (draft.stage === 'second-cycle') {
+    const label = draft.secondCycleProgram === 'respin' ? 'Re-Spin' : draft.secondCycleProgram === 'mix-in' ? 'Mix-In' : null;
+    return <Page icon="record-circle-outline" eyebrow="FINAL MACHINE CYCLE" title={label ? `Press ${label}` : 'No second cycle needed'}>{label ? <InstructionList steps={draft.secondCycleProgram === 'respin' ? ['Pack the surface down so the paddle can reach the mixture.', 'Confirm the corrective liquid is in the center of the pint.', 'Press Re-Spin once and let the machine stop completely.', draft.mixInIds.length ? 'Fold selected hard chunks in by hand after the cycle.' : 'Open the pint and check the final texture.'] : ['Make a narrow hole down the center of the pint.', 'Add one small combined handful of your selected mix-ins.', 'Press Mix-In once and let the machine stop completely.', 'Open the pint and check the final texture.']} /> : <GlassCard style={styles.readyCard}><Icon name="check-circle-outline" color={palette.success} size={28} /><Text style={styles.readyCardText}>Your first spin was perfect and no mix-ins were selected.</Text></GlassCard>}<Text style={styles.finalCycleNote}>This is the last machine cycle in the tutorial.</Text></Page>;
+  }
+
+  if (draft.stage === 'final-check') {
     const toggleResult = (id: string) => onPatch({ finalTextureResult: draft.finalTextureResult === id ? null : id as TutorialTextureResult });
-    if (draft.finalTextureResult && draft.finalTextureResult !== 'perfect') return <TextureFixPage result={draft.finalTextureResult} onLooksGood={() => onPatch({ finalTextureResult: 'perfect' })} onChooseDifferent={() => onPatch({ finalTextureResult: null })} />;
-    return <Page icon="eye-outline" eyebrow="FINAL TEXTURE CHECK" title="How did it come out?" intro="Choose what you see now. Tap the selected answer again to clear it."><TextureChoiceList selected={draft.finalTextureResult} onPress={toggleResult} />{draft.finalTextureResult && draft.finalTextureResult !== 'perfect' && finalGuidance ? <GlassCard style={styles.troubleshootCard}><Text style={styles.nextLabel}>TRY THIS NEXT</Text><Text style={styles.troubleshootAction}>{finalGuidance.next}</Text><Text style={styles.troubleshootDetail}>{correctionDetail(draft.finalTextureResult)}</Text></GlassCard> : draft.finalTextureResult === 'perfect' ? <Text style={styles.perfectNote}>Perfect — stop processing and enjoy it.</Text> : null}</Page>;
+    return <Page icon="eye-outline" eyebrow="FINAL TEXTURE CHECK" title="How did it come out?"><TextureChoiceList selected={draft.finalTextureResult} onPress={toggleResult} />{draft.finalTextureResult && draft.finalTextureResult !== 'perfect' ? <GlassCard style={styles.friendHelp}><Icon name="account-group-outline" color={palette.lavender} size={28} /><View style={styles.flex}><Text style={styles.friendHelpTitle}>Stop the machine here</Text><Text style={styles.friendHelpText}>Do not run a third cycle. Note the result for the next recipe, ask a friend, or contact mshaner@shanerstrong.com.</Text></View></GlassCard> : draft.finalTextureResult === 'perfect' ? <Text style={styles.perfectNote}>Perfect — stop processing and enjoy it.</Text> : null}</Page>;
   }
 
   const presentation = tutorialRecipePresentation(draft);
@@ -586,7 +625,7 @@ function IngredientStage({ draft, compact, title, eyebrow, intro, recommendedId,
   const names = selected.map((id) => ingredients.find((item) => item.id === id)?.name).filter(Boolean).join(', ');
   const orderedChoices = [...choices.filter((choice) => choice.id !== recommendedId), ...choices.filter((choice) => choice.id === recommendedId)];
   const category = ingredients.find((item) => item.id === recommendedId)?.category ?? 'all';
-  return <Page icon={choices[0].icon} eyebrow={eyebrow} title={title} intro={intro}>{open ? <><DisclosureButton label="Close other choices" open onPress={() => onDisclosure(disclosureId)} /><SmoothReveal><ChoicePager choices={orderedChoices} selected={selected} compact={compact} multi recommendedId={recommendedId} onPress={(id) => onToggle(id, kind)} /><LibraryActions category={category} onCustom={onCustom} onViewMore={onViewMore} /></SmoothReveal></> : <><RecommendationCard title={recommendedTitle} detail={recommendedDetail} action={selected.includes(recommendedId) ? 'Recommended added' : 'Use recommendation'} active={selected.includes(recommendedId)} onPress={() => { if (!selected.includes(recommendedId)) onToggle(recommendedId, kind); }} /><DisclosureButton label="Other choices" open={false} onPress={() => onDisclosure(disclosureId)} /></>}{selected.length ? <AdjustButton ids={selected} label={`${selected.length} selected`} names={names} onPress={() => onEdit(selected[0])} /> : <Text style={styles.optionalHint}>Optional · tap Continue to skip</Text>}</Page>;
+  return <Page icon={choices[0].icon} eyebrow={eyebrow} title={title} intro={intro}>{open ? <><DisclosureButton label="Close other choices" open onPress={() => onDisclosure(disclosureId)} /><SmoothReveal><LibraryActions category={category} onCustom={onCustom} onViewMore={onViewMore} /><ChoicePager choices={orderedChoices.slice(0, 6)} selected={selected} compact={compact} multi allVisible dense recommendedId={recommendedId} onPress={(id) => onToggle(id, kind)} /></SmoothReveal></> : <><RecommendationCard title={recommendedTitle} detail={recommendedDetail} action={selected.includes(recommendedId) ? 'Recommended added' : 'Use recommendation'} active={selected.includes(recommendedId)} onPress={() => { if (!selected.includes(recommendedId)) onToggle(recommendedId, kind); }} /><DisclosureButton label="Other choices" open={false} onPress={() => onDisclosure(disclosureId)} /></>}{selected.length ? <AdjustButton ids={selected} label={`${selected.length} selected`} names={names} onPress={() => onEdit(selected[0])} /> : <Text style={styles.optionalHint}>Optional · tap Continue to skip</Text>}</Page>;
 }
 
 function LibraryActions({ category, onCustom, onViewMore }: { category: 'all' | IngredientCategory; onCustom: (category: IngredientCategory) => void; onViewMore: (category: 'all' | IngredientCategory) => void }) {
@@ -612,25 +651,21 @@ function TutorialCustomIngredient({ category, onClose, onSave }: { category: Ing
 
 function TutorialIngredientPicker({ category, ingredients, selectedIds, onSelect, onClose, onCustom }: { category: 'all' | IngredientCategory; ingredients: Ingredient[]; selectedIds: string[]; onSelect: (ingredient: Ingredient) => void; onClose: () => void; onCustom: (category: IngredientCategory) => void }) {
   const [query, setQuery] = useState('');
+  const entrance = useRef(new Animated.Value(0)).current;
+  const reducedMotion = useReducedMotion();
+  useEffect(() => {
+    Animated.timing(entrance, { toValue: 1, duration: reducedMotion ? 0 : 260, useNativeDriver: true }).start();
+  }, [entrance, reducedMotion]);
   const visible = ingredients.filter((ingredient) => {
     const matchesCategory = category === 'all' || ingredient.category === category;
     const needle = query.trim().toLowerCase();
     return matchesCategory && (!needle || `${ingredient.name} ${ingredient.subtitle} ${ingredient.brand ?? ''}`.toLowerCase().includes(needle));
   });
-  return <View style={styles.libraryOverlay}><View style={styles.librarySheet}><View style={styles.overlayHeading}><View><Text style={styles.eyebrow}>INGREDIENT LIBRARY</Text><Text style={styles.overlayTitle}>Add more ingredients</Text></View><Pressable onPress={onClose} style={styles.closeFix} accessibilityRole="button" accessibilityLabel="Close ingredient library"><Icon name="close" color={palette.text} size={22} /></Pressable></View><SearchField value={query} onChangeText={setQuery} placeholder="Search ingredients" /><Text style={styles.libraryScrollHint}>Scroll this list · tutorial controls stay below</Text><ScrollView style={styles.libraryScroll} contentContainerStyle={styles.libraryScrollContent} showsVerticalScrollIndicator persistentScrollbar>{visible.map((ingredient) => { const selected = selectedIds.includes(ingredient.id); return <Pressable key={ingredient.id} onPress={() => onSelect(ingredient)} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} accessibilityLabel={`${selected ? 'Added' : 'Add'} ${ingredient.name}`} style={[styles.pickerIngredient, selected && styles.pickerIngredientSelected]}><View style={styles.pickerIngredientIcon}><Icon name={ingredientIcon(ingredient)} color={selected ? palette.success : palette.lavender} /></View><View style={styles.flex}><Text style={styles.pickerIngredientName}>{ingredient.name}</Text><Text style={styles.pickerIngredientMeta}>{ingredient.subtitle || ingredient.category.replace('-', ' ')}</Text></View><Icon name={selected ? 'check-circle' : 'plus-circle-outline'} color={selected ? palette.success : palette.cyan} /></Pressable>; })}{!visible.length ? <Text style={styles.emptyLibrary}>No matching ingredients. Try another search.</Text> : null}<Pressable onPress={() => onCustom(category === 'all' ? 'flavoring' : category)} style={styles.inlineCustomButton} accessibilityRole="button"><Icon name="pencil-plus-outline" color={palette.lavender} /><Text style={styles.inlineCustomText}>Enter my own ingredient</Text></Pressable></ScrollView></View></View>;
+  return <Animated.View style={[styles.libraryOverlay, { opacity: entrance, transform: [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [42, 0] }) }] }]}><View style={styles.librarySheet}><View style={styles.overlayHeading}><View><Text style={styles.eyebrow}>INGREDIENT LIBRARY</Text><Text style={styles.overlayTitle}>Add more ingredients</Text></View><Pressable onPress={onClose} style={styles.closeFix} accessibilityRole="button" accessibilityLabel="Close ingredient library"><Icon name="close" color={palette.text} size={22} /></Pressable></View><SearchField value={query} onChangeText={setQuery} placeholder="Search ingredients" /><Text style={styles.libraryScrollHint}>Scroll this list · tutorial controls stay below</Text><ScrollView style={styles.libraryScroll} contentContainerStyle={styles.libraryScrollContent} showsVerticalScrollIndicator persistentScrollbar>{visible.map((ingredient) => { const selected = selectedIds.includes(ingredient.id); return <Pressable key={ingredient.id} onPress={() => onSelect(ingredient)} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} accessibilityLabel={`${selected ? 'Added' : 'Add'} ${ingredient.name}`} style={[styles.pickerIngredient, selected && styles.pickerIngredientSelected]}><View style={styles.pickerIngredientIcon}><Icon name={ingredientIcon(ingredient)} color={selected ? palette.success : palette.lavender} /></View><View style={styles.flex}><Text style={styles.pickerIngredientName}>{ingredient.name}</Text><Text style={styles.pickerIngredientMeta}>{ingredient.subtitle || ingredient.category.replace('-', ' ')}</Text></View><Icon name={selected ? 'check-circle' : 'plus-circle-outline'} color={selected ? palette.success : palette.cyan} /></Pressable>; })}{!visible.length ? <Text style={styles.emptyLibrary}>No matching ingredients. Try another search.</Text> : null}<Pressable onPress={() => onCustom(category === 'all' ? 'flavoring' : category)} style={styles.inlineCustomButton} accessibilityRole="button"><Icon name="pencil-plus-outline" color={palette.lavender} /><Text style={styles.inlineCustomText}>Enter my own ingredient</Text></Pressable></ScrollView></View></Animated.View>;
 }
 
 function InstructionList({ steps }: { steps: string[] }) {
   return <GlassCard style={styles.instructionList}>{steps.map((step, index) => <View key={step} style={styles.instructionRow}><View style={styles.instructionNumber}><Text style={styles.instructionNumberText}>{index + 1}</Text></View><Text style={styles.instructionText}>{step}</Text></View>)}</GlassCard>;
-}
-
-function CollapsibleInstructions({ open, steps }: { open: boolean; steps: string[] }) {
-  const progress = useRef(new Animated.Value(open ? 1 : 0)).current;
-  const reducedMotion = useReducedMotion();
-  useEffect(() => {
-    Animated.timing(progress, { toValue: open ? 1 : 0, duration: reducedMotion ? 0 : 260, useNativeDriver: false }).start();
-  }, [open, progress, reducedMotion]);
-  return <Animated.View pointerEvents={open ? 'auto' : 'none'} style={{ overflow: 'hidden', opacity: progress, maxHeight: progress.interpolate({ inputRange: [0, 1], outputRange: [0, 620] }), transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) }] }}><ScrollView style={styles.inlineInstructionScroll} contentContainerStyle={styles.inlineInstructionContent} showsVerticalScrollIndicator><InstructionList steps={steps} /></ScrollView></Animated.View>;
 }
 
 function FullInstructionOverlay({ open, label, steps, onClose }: { open: boolean; label: string; steps: string[]; onClose: () => void }) {
@@ -649,14 +684,6 @@ function TextureChoiceList({ selected, onPress }: { selected: TutorialTextureRes
   })}</View>;
 }
 
-function TextureFixPage({ result, onLooksGood, onChooseDifferent }: { result: TutorialTextureResult; onLooksGood: () => void; onChooseDifferent: () => void }) {
-  const guidance = tutorialTextureGuidance[result];
-  const steps = result === 'too-soft'
-    ? ['Put the pint back in the freezer with the lid on.', 'Freeze it level until the surface is firm again.', 'Do not run another cycle while it is melting.']
-    : ['Pack the surface down so the paddle can reach the mixture.', 'Run Re-Spin once using the machine controls.', result === 'icy' ? 'If it is still icy, review the base and sweetener balance before adding liquid.' : 'If it is still dry, add only a small splash of milk and Re-Spin once more.'];
-  return <View style={styles.textureFixPage}><View style={styles.overlayHeading}><View><Text style={styles.eyebrow}>TEXTURE HELP</Text><Text style={styles.overlayTitle}>{guidance.title}</Text></View><Pressable onPress={onChooseDifferent} accessibilityRole="button" style={styles.closeFix}><Icon name="close" color={palette.text} size={22} /></Pressable></View><ScrollView style={styles.overlayScroll} contentContainerStyle={styles.overlayScrollContent} showsVerticalScrollIndicator><GlassCard style={styles.fixHero}><Icon name="auto-fix" color={palette.cyan} size={34} /><Text style={styles.fixHeroText}>{guidance.detail}</Text></GlassCard><Text style={styles.fixSectionTitle}>Try this first</Text><InstructionList steps={steps} /><GlassCard style={styles.friendHelp}><Icon name="account-group-outline" color={palette.lavender} size={28} /><View style={styles.flex}><Text style={styles.friendHelpTitle}>Need another opinion?</Text><Text style={styles.friendHelpText}>Ask a friend, or contact mshaner@shanerstrong.com for additional help.</Text></View></GlassCard><View style={styles.fixActions}><GradientButton title="Looks good now" icon="check" onPress={onLooksGood} /><Pressable onPress={onChooseDifferent} accessibilityRole="button" style={styles.secondaryFixAction}><Text style={styles.secondaryFixText}>Choose a different issue</Text></Pressable></View></ScrollView></View>;
-}
-
 function FocusedAmountPage({ ingredient, item, settings, compact, recommendedAmount: amount, position, total, onChange, onRemove, onPrevious, onNext }: { ingredient: Ingredient; item: RecipeIngredient; settings: UserSettings; compact: boolean; recommendedAmount: number; position: number; total: number; onChange: (amount: number, manual: boolean) => void; onRemove: () => void; onPrevious: () => void; onNext: () => void }) {
   const pager = total > 1 ? <View style={styles.editorPager}><Pressable disabled={position <= 1} onPress={onPrevious} style={[styles.editorPagerButton, position <= 1 && styles.disabled]} accessibilityRole="button"><Text style={styles.editorPagerText}>Previous</Text></Pressable><Text style={styles.editorPagerCount}>{position} of {total}</Text><Pressable disabled={position >= total} onPress={onNext} style={[styles.editorPagerButton, position >= total && styles.disabled]} accessibilityRole="button"><Text style={styles.editorPagerText}>Next</Text></Pressable></View> : null;
   const editor = <TutorialAmountEditor item={item} ingredient={ingredient} settings={settings} recommendedAmount={amount} onChange={onChange} onRemove={onRemove} />;
@@ -664,8 +691,8 @@ function FocusedAmountPage({ ingredient, item, settings, compact, recommendedAmo
   return <Page icon={ingredientIcon(ingredient)} eyebrow="ADJUST ONE INGREDIENT" title={ingredient.name} intro="Type an amount or use minus and plus. Reaching zero removes it.">{pager}{editor}<Text style={styles.detailText}>Amounts are stored in metric units, so changing the display unit never changes the recipe.</Text></Page>;
 }
 
-function Page({ icon, eyebrow, title, intro, children }: { icon: IconName; eyebrow: string; title: string; intro: string; children: React.ReactNode }) {
-  return <View style={styles.page}><View style={styles.pageHeading}><View style={styles.pageIcon}><Icon name={icon} size={28} color={palette.pink} /></View><View style={styles.headingCopy}><Text style={styles.eyebrow}>{eyebrow}</Text><Text style={styles.title} maxFontSizeMultiplier={1.35}>{title}</Text></View></View><Text style={styles.intro} maxFontSizeMultiplier={1.35}>{intro}</Text><View style={styles.pageBody}>{children}</View></View>;
+function Page({ icon, eyebrow, title, children }: { icon: IconName; eyebrow: string; title: string; intro?: string; children: React.ReactNode }) {
+  return <View style={styles.page}><View style={styles.pageHeading}><View style={styles.pageIcon}><Icon name={icon} size={28} color={palette.pink} /></View><View style={styles.headingCopy}><Text style={styles.eyebrow}>{eyebrow}</Text><Text style={styles.title} maxFontSizeMultiplier={1.35}>{title}</Text></View></View><View style={styles.pageBody}>{children}</View></View>;
 }
 
 function RecommendationCard({ title, detail, action, active, onPress }: { title: string; detail: string; action: string; active: boolean; onPress: () => void }) {
@@ -689,8 +716,8 @@ function SmoothReveal({ children }: { children: React.ReactNode }) {
   return <Animated.View style={{ opacity: progress, transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }] }}>{children}</Animated.View>;
 }
 
-function ChoicePager({ choices, selected, compact, multi = false, recommendedId, onPress }: { choices: Choice[]; selected: string[]; compact: boolean; multi?: boolean; recommendedId?: string; onPress: (id: string) => void }) {
-  const pageSize = compact ? 2 : 4;
+function ChoicePager({ choices, selected, compact, multi = false, allVisible = false, dense = false, recommendedId, onPress }: { choices: Choice[]; selected: string[]; compact: boolean; multi?: boolean; allVisible?: boolean; dense?: boolean; recommendedId?: string; onPress: (id: string) => void }) {
+  const pageSize = allVisible ? choices.length : compact ? 2 : 4;
   const [page, setPage] = useState(0);
   const orderedChoices = recommendedId
     ? [...choices.filter((choice) => choice.id !== recommendedId), ...choices.filter((choice) => choice.id === recommendedId)]
@@ -699,13 +726,12 @@ function ChoicePager({ choices, selected, compact, multi = false, recommendedId,
   const visible = orderedChoices.slice(page * pageSize, page * pageSize + pageSize);
   return <View style={styles.choicePager}><View style={styles.choiceGrid}>{visible.map((choice) => {
     const active = selected.includes(choice.id);
-    return <Pressable key={choice.id} onPress={() => onPress(choice.id)} accessibilityRole={multi ? 'checkbox' : 'radio'} accessibilityState={multi ? { checked: active } : { selected: active }} accessibilityLabel={`${choice.title}. ${choice.detail}${choice.id === recommendedId ? '. Recommended' : ''}`} style={({ pressed }) => [styles.choice, active && styles.choiceActive, pressed && styles.pressed]}><View style={[styles.choiceArt, toneStyle[choice.tone]]}><Icon name={choice.icon} size={31} color={active ? palette.white : palette.text} /></View>{choice.id === recommendedId ? <Text style={styles.choiceRecommended}>RECOMMENDED</Text> : null}<Text style={styles.choiceTitle}>{choice.title}</Text><Text style={styles.choiceDetail}>{choice.detail}</Text>{active ? <View style={styles.check}><Icon name="check" size={15} color={palette.ink} /></View> : null}</Pressable>;
+    return <Pressable key={choice.id} onPress={() => onPress(choice.id)} accessibilityRole={multi ? 'checkbox' : 'radio'} accessibilityState={multi ? { checked: active } : { selected: active }} accessibilityLabel={`${choice.title}. ${choice.detail}${choice.id === recommendedId ? '. Recommended' : ''}`} style={({ pressed }) => [styles.choice, dense && styles.choiceDense, active && styles.choiceActive, pressed && styles.pressed]}><View style={[styles.choiceArt, dense && styles.choiceArtDense, toneStyle[choice.tone]]}><Icon name={choice.icon} size={dense ? 22 : 31} color={active ? palette.white : palette.text} /></View>{choice.id === recommendedId ? <Text style={styles.choiceRecommended}>RECOMMENDED</Text> : null}<Text style={[styles.choiceTitle, dense && styles.choiceTitleDense]}>{choice.title}</Text><Text style={[styles.choiceDetail, dense && styles.choiceDetailDense]}>{choice.detail}</Text>{active ? <View style={styles.check}><Icon name="check" size={15} color={palette.ink} /></View> : null}</Pressable>;
   })}</View>{pages > 1 ? <View style={styles.pagerRow}><Pressable disabled={page === 0} onPress={() => setPage((value) => Math.max(0, value - 1))} style={[styles.pageButton, page === 0 && styles.disabled]} accessibilityRole="button"><Text style={styles.pageButtonText}>Previous</Text></Pressable><Text style={styles.pageCount}>{page + 1} of {pages}</Text><Pressable disabled={page === pages - 1} onPress={() => setPage((value) => Math.min(pages - 1, value + 1))} style={[styles.pageButton, page === pages - 1 && styles.disabled]} accessibilityRole="button"><Text style={styles.pageButtonText}>More</Text></Pressable></View> : null}</View>;
 }
 
-function MachineChoiceGrid({ choices, selected, open, onOpen, onSelect, onClose }: { choices: Choice[]; selected: string; open: boolean; onOpen: () => void; onSelect: (id: string) => void; onClose: () => void }) {
-  if (!open) return <><RecommendationCard title={choices.find((choice) => choice.id === selected)?.title ?? 'Choose your machine'} detail={choices.find((choice) => choice.id === selected)?.detail ?? ''} action="Selected machine" active onPress={onOpen} /><DisclosureButton label="Choose a different machine" open={false} onPress={onOpen} /></>;
-  return <View style={styles.machineGridWrap}><DisclosureButton label="Close machine choices" open onPress={onClose} /><View style={styles.machineGrid}>{choices.map((choice) => <Pressable key={choice.id} onPress={() => onSelect(choice.id)} accessibilityRole="radio" accessibilityState={{ selected: selected === choice.id }} accessibilityLabel={`${choice.title}. ${choice.detail}`} style={[styles.machineChoice, selected === choice.id && styles.machineChoiceActive]}><View style={[styles.machineChoiceIcon, toneStyle[choice.tone]]}><Icon name={choice.icon} color={selected === choice.id ? palette.white : palette.text} size={25} /></View><Text style={styles.machineChoiceTitle}>{choice.title}</Text><Text style={styles.machineChoiceDetail}>{choice.detail}</Text>{selected === choice.id ? <View style={styles.machineCheck}><Icon name="check-circle" color={palette.success} size={18} /></View> : null}</Pressable>)}</View></View>;
+function MachineChoiceGrid({ choices, selected, onSelect }: { choices: Choice[]; selected: string; onSelect: (id: string) => void }) {
+  return <View style={styles.machineGridWrap}><View style={styles.machineGrid}>{choices.map((choice) => <Pressable key={choice.id} onPress={() => onSelect(choice.id)} accessibilityRole="radio" accessibilityState={{ selected: selected === choice.id }} accessibilityLabel={`${choice.title}. ${choice.detail}`} style={[styles.machineChoice, selected === choice.id && styles.machineChoiceActive]}><View style={[styles.machineChoiceIcon, toneStyle[choice.tone]]}><Icon name={choice.icon} color={selected === choice.id ? palette.white : palette.text} size={25} /></View><Text style={styles.machineChoiceTitle}>{choice.title}</Text><Text style={styles.machineChoiceDetail}>{choice.detail}</Text>{selected === choice.id ? <View style={styles.machineCheck}><Icon name="check-circle" color={palette.success} size={18} /></View> : null}</Pressable>)}</View></View>;
 }
 
 function AdjustButton({ ids, label, names, onPress }: { ids: string[]; label: string; names: string; onPress: () => void }) {
@@ -714,7 +740,7 @@ function AdjustButton({ ids, label, names, onPress }: { ids: string[]; label: st
 
 function TutorialProgress({ stage }: { stage: TutorialStage }) {
   const index = TUTORIAL_STAGES.indexOf(stage);
-  const phase = index <= 5 ? 'Prepare' : index === 6 ? 'Freeze' : index <= 11 ? 'Process' : 'Complete';
+  const phase = index <= 6 ? 'Prepare' : index === 7 ? 'Freeze' : index < TUTORIAL_STAGES.length - 1 ? 'Process' : 'Complete';
   return <View style={styles.progress}><View style={styles.progressTop}><Text style={styles.progressPhase}>{phase}</Text><Text style={styles.progressCount}>{index + 1} of {TUTORIAL_STAGES.length}</Text></View><View style={styles.dots}>{TUTORIAL_STAGES.map((value, dotIndex) => <View key={value} style={[styles.dot, dotIndex <= index && styles.dotActive]} />)}</View></View>;
 }
 
@@ -747,14 +773,6 @@ function ingredientIcon(ingredient: Ingredient): IconName {
   return 'food-variant';
 }
 
-function correctionDetail(result: TutorialTextureResult) {
-  if (result === 'powdery') return 'A powdery first spin is common. Pack it down and Re-Spin once before considering a small amount of liquid.';
-  if (result === 'chalky') return 'Dry powder can create chalkiness. Re-Spin now, then reduce powder or increase the liquid base next time.';
-  if (result === 'icy') return 'Ice usually points to the base balance. Re-Spin once; review sweetener, milk solids, and stabilizer for the next pint.';
-  if (result === 'too-soft') return 'Do not keep processing a melting pint. Freeze it until firm again.';
-  return 'Once the texture is right, stop. Use Mix-In only if you want chunks folded through it.';
-}
-
 function makeTutorialRecipe(draft: TutorialDraft, items: RecipeIngredient[], ingredients: Ingredient[]) {
   const presentation = tutorialRecipePresentation(draft);
   const mixIns = tutorialMixInItems(draft, ingredients);
@@ -764,7 +782,11 @@ function makeTutorialRecipe(draft: TutorialDraft, items: RecipeIngredient[], ing
     'Pour into the correct container without exceeding its MAX line.',
     'Freeze upright and level with the storage lid for at least 24 hours.',
     'Run the recommended first-spin program and inspect the texture.',
-    draft.mixInIds.length ? 'Make a hole with a spoon, add one small combined handful of mix-ins, then run Mix-In once.' : 'If powdery or crumbly, pack it down and use Re-Spin once.',
+    draft.secondCycleProgram === 'mix-in'
+      ? 'Make a hole with a spoon, add one small combined handful of mix-ins, then run Mix-In as the final cycle.'
+      : draft.secondCycleProgram === 'respin'
+        ? 'Add the confirmed correction, then run Re-Spin as the final cycle. Fold hard chunks in by hand afterward.'
+        : 'If the first spin is perfect and no mix-ins are selected, stop processing.',
   ];
   return recipe;
 }
@@ -808,11 +830,15 @@ const styles = StyleSheet.create({
   disclosureText: { color: palette.cyan, fontSize: 15, lineHeight: 20, fontWeight: '900' },
   choicePager: { gap: 6 },
   choiceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  choice: { width: '48.9%', minHeight: 98, padding: 9, borderRadius: radii.md, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.panelSoft, overflow: 'hidden' },
+  choice: { width: '48%', minHeight: 98, padding: 9, borderRadius: radii.md, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.panelSoft, overflow: 'hidden' },
+  choiceDense: { minHeight: 68, padding: 7, paddingLeft: 43 },
   choiceActive: { borderColor: palette.pink, borderWidth: 2, backgroundColor: 'rgba(241,78,155,0.10)' },
   choiceArt: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 5 },
+  choiceArtDense: { position: 'absolute', left: 7, top: 9, width: 30, height: 30, borderRadius: 10, marginBottom: 0 },
   choiceTitle: { color: palette.text, fontSize: 15, lineHeight: 19, fontWeight: '900' },
+  choiceTitleDense: { fontSize: 14, lineHeight: 18 },
   choiceDetail: { color: palette.textMuted, fontSize: 13, lineHeight: 17, marginTop: 1 },
+  choiceDetailDense: { fontSize: 11, lineHeight: 14 },
   choiceRecommended: { color: palette.pink, fontSize: 10, lineHeight: 13, fontWeight: '900', letterSpacing: 0.5, marginBottom: 2 },
   machineGridWrap: { gap: spacing.xs },
   machineGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
@@ -839,6 +865,9 @@ const styles = StyleSheet.create({
   editorPagerCount: { color: palette.textMuted, fontSize: 13, lineHeight: 18, fontWeight: '800' },
   compactEditorPage: { flex: 1, minHeight: 0, gap: spacing.xs },
   compactEditorHint: { color: palette.textMuted, fontSize: 14, lineHeight: 19, textAlign: 'center' },
+  overflowAlert: { padding: spacing.sm, borderColor: palette.danger, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  overflowTitle: { color: palette.text, fontSize: 17, lineHeight: 22, fontWeight: '900' },
+  overflowText: { color: palette.textMuted, fontSize: 14, lineHeight: 19 },
   fillCard: { padding: spacing.md, borderColor: 'rgba(78,217,232,0.38)' },
   dangerCard: { borderColor: palette.danger },
   fillTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -890,6 +919,16 @@ const styles = StyleSheet.create({
   friendHelp: { padding: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderColor: 'rgba(174,134,255,0.35)' },
   friendHelpTitle: { color: palette.text, fontSize: 16, lineHeight: 21, fontWeight: '900' },
   friendHelpText: { color: palette.textMuted, fontSize: 14, lineHeight: 20, marginTop: 2 },
+  correctionCard: { padding: spacing.sm, borderColor: 'rgba(246,197,106,0.42)' },
+  correctionTitle: { color: palette.text, fontSize: 17, lineHeight: 22, fontWeight: '900' },
+  correctionText: { color: palette.textMuted, fontSize: 14, lineHeight: 20, marginTop: 3 },
+  skipCorrection: { minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radii.md, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.panelRaised },
+  skipCorrectionText: { color: palette.textMuted, fontSize: 14, lineHeight: 19, fontWeight: '900' },
+  readyCard: { padding: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderColor: 'rgba(92,224,169,0.38)' },
+  readyCardText: { flex: 1, color: palette.text, fontSize: 15, lineHeight: 21, fontWeight: '800' },
+  sectionLabel: { color: palette.cyan, fontSize: 14, lineHeight: 19, fontWeight: '900', marginTop: 2 },
+  manualFoldNote: { color: palette.warning, fontSize: 13, lineHeight: 18, fontWeight: '800', textAlign: 'center' },
+  finalCycleNote: { color: palette.cyan, fontSize: 14, lineHeight: 20, fontWeight: '900', textAlign: 'center' },
   moreAdviceButton: { minHeight: 48, borderRadius: radii.md, borderWidth: 1, borderColor: 'rgba(78,217,232,0.30)', backgroundColor: 'rgba(78,217,232,0.08)', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.xs },
   moreAdviceText: { color: palette.cyan, fontSize: 14, lineHeight: 19, fontWeight: '900' },
   fixActions: { gap: spacing.xs },

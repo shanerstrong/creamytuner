@@ -2,7 +2,7 @@ import { estimateVolumeMl } from '@/src/domain/nutrition';
 import type { Ingredient, Recipe, RecipeIngredient, TutorialDraft, TutorialTextureResult } from '@/src/types';
 
 export const CURRENT_ONBOARDING_VERSION = 5;
-export const TUTORIAL_STAGES = ['machine', 'dietary', 'base', 'helper', 'sweetener', 'flavor', 'blend', 'freeze', 'first-spin', 'evaluate', 'mix-ins', 'respin', 'complete'] as const;
+export const TUTORIAL_STAGES = ['machine', 'dietary', 'base', 'helper', 'sweetener', 'flavor', 'blend', 'freeze', 'first-spin', 'evaluate', 'second-cycle-additions', 'second-cycle', 'final-check', 'complete'] as const;
 export const TUTORIAL_STEP_COUNT = TUTORIAL_STAGES.length;
 
 export type TutorialBaseTemplate = {
@@ -27,6 +27,7 @@ export function normalizeTutorialDraft(draft: TutorialDraft): TutorialDraft {
     disclosures: [...new Set(draft.disclosures)],
     dietaryPreferences: [...new Set(draft.dietaryPreferences)],
     mixInIds: [...new Set(draft.mixInIds.length ? draft.mixInIds : draft.mixInId ? [draft.mixInId] : [])],
+    correctiveIngredientIds: [...new Set(draft.correctiveIngredientIds)],
   };
 }
 
@@ -126,23 +127,23 @@ export const tutorialTextureGuidance: Record<TutorialTextureResult, { title: str
     next: 'Optional Mix-In',
   },
   powdery: {
-    title: 'Pack it down and Re-Spin',
-    detail: 'A powdery first spin is common with very cold or lean bases. Re-Spin once before adding liquid.',
-    next: 'Re-Spin',
+    title: 'Add a small splash',
+    detail: 'A powdery first spin is common with very cold or lean bases. Pack it down and add one tablespoon of your base before the final cycle.',
+    next: 'Prepare the final cycle',
   },
   chalky: {
-    title: 'Re-Spin, then adjust next time',
-    detail: 'Pack the pint down with a spoon or silicone spatula. If it stays chalky, reduce dry powder or add more body in the next recipe.',
-    next: 'Re-Spin',
+    title: 'Add moisture before the final cycle',
+    detail: 'Pack the pint down, then add one tablespoon of your base before the final cycle. For the next pint, reduce dry powder if the chalkiness returns.',
+    next: 'Prepare the final cycle',
   },
   icy: {
-    title: 'Re-Spin and review the base',
-    detail: 'Re-Spin once. For the next pint, review sweetener, milk solids, and stabilizer instead of repeatedly adding liquid.',
-    next: 'Re-Spin',
+    title: 'Add a small splash',
+    detail: 'Pack the surface down and add one tablespoon of your base before the final cycle. Review sweetener and milk solids for the next pint.',
+    next: 'Prepare the final cycle',
   },
   'too-soft': {
     title: 'Freeze it longer',
-    detail: 'Do not Re-Spin a melting pint. Return it to the freezer until firm and make sure it froze level.',
-    next: 'Back to freezer',
+    detail: 'Do not process a melting pint. Return it to the freezer until completely firm and level before the final cycle.',
+    next: 'Refreeze before the final cycle',
   },
 };

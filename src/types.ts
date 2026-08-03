@@ -145,12 +145,21 @@ export const tutorialStageSchema = z.enum([
   'freeze',
   'first-spin',
   'evaluate',
-  'mix-ins',
-  'respin',
+  'second-cycle-additions',
+  'second-cycle',
+  'final-check',
   'complete',
 ]);
-const persistedTutorialStageSchema = z.union([tutorialStageSchema, z.literal('correction')])
-  .transform((stage) => stage === 'correction' ? 'mix-ins' as const : stage);
+const persistedTutorialStageSchema = z.union([
+  tutorialStageSchema,
+  z.literal('correction'),
+  z.literal('mix-ins'),
+  z.literal('respin'),
+]).transform((stage) => {
+  if (stage === 'correction' || stage === 'mix-ins') return 'second-cycle-additions' as const;
+  if (stage === 'respin') return 'final-check' as const;
+  return stage;
+});
 
 const tutorialDraftV3Schema = z.object({
   version: z.literal(3).default(3),
@@ -163,6 +172,9 @@ const tutorialDraftV3Schema = z.object({
   manualAmountIds: z.array(z.string()).default([]),
   mixInId: z.string().nullable().default(null),
   mixInIds: z.array(z.string()).default([]),
+  correctionDecision: z.enum(['pending', 'apply', 'skip']).default('pending'),
+  correctiveIngredientIds: z.array(z.string()).default([]),
+  secondCycleProgram: z.enum(['mix-in', 'respin']).nullable().default(null),
   textureResult: tutorialTextureResultSchema.nullable().default(null),
   finalTextureResult: tutorialTextureResultSchema.nullable().default(null),
   spinMinutes: z.number().int().min(1).max(10).default(2),
@@ -254,6 +266,9 @@ export const userSettingsSchema = z.object({
     manualAmountIds: [],
     mixInId: null,
     mixInIds: [],
+    correctionDecision: 'pending',
+    correctiveIngredientIds: [],
+    secondCycleProgram: null,
     textureResult: null,
     finalTextureResult: null,
     spinMinutes: 2,

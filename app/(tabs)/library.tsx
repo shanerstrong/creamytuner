@@ -66,8 +66,9 @@ export default function IngredientLibraryScreen() {
         ? draft.baseItems
         : [...draft.baseItems, { ingredientId: ingredient.id, amount: ingredient.defaultAmount, unit: ingredient.defaultUnit }];
       await updateSettings({ tutorialDraft: { ...draft, baseItems } });
-    } else if (draft.stage === 'mix-ins' && ingredient.category === 'mix-in') {
-      await updateSettings({ tutorialDraft: { ...draft, mixInId: ingredient.id } });
+    } else if (draft.stage === 'second-cycle-additions' && ingredient.category === 'mix-in') {
+      const mixInIds = [...new Set([...draft.mixInIds, ingredient.id])];
+      await updateSettings({ tutorialDraft: { ...draft, mixInId: mixInIds[0] ?? null, mixInIds } });
     } else {
       const selectedIngredientIds = [...new Set([...draft.selectedIngredientIds, ingredient.id])];
       await updateSettings({ tutorialDraft: { ...draft, selectedIngredientIds, itemAmounts: { ...draft.itemAmounts, [ingredient.id]: ingredient.defaultAmount } } });

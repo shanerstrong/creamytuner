@@ -22,10 +22,14 @@ describe('first-pint tutorial', () => {
     expect(migrated.baseItems).toEqual([{ ingredientId: 'soy-milk', amount: 325, unit: 'ml' }]);
   });
 
-  test('removes the redundant correction page and resumes old drafts at mix-ins', () => {
-    expect(TUTORIAL_STAGES).toHaveLength(13);
+  test('migrates old correction and processing stages into the two-cycle flow', () => {
+    expect(TUTORIAL_STAGES).toHaveLength(14);
     expect(TUTORIAL_STAGES).not.toContain('correction');
-    expect(tutorialDraftSchema.parse({ version: 3, stage: 'correction' }).stage).toBe('mix-ins');
+    expect(TUTORIAL_STAGES).not.toContain('mix-ins');
+    expect(TUTORIAL_STAGES).not.toContain('respin');
+    expect(tutorialDraftSchema.parse({ version: 3, stage: 'correction' }).stage).toBe('second-cycle-additions');
+    expect(tutorialDraftSchema.parse({ version: 3, stage: 'mix-ins' }).stage).toBe('second-cycle-additions');
+    expect(tutorialDraftSchema.parse({ version: 3, stage: 'respin' }).stage).toBe('final-check');
   });
 
   test('texture answers support an unselected state', () => {
@@ -103,11 +107,18 @@ describe('first-pint tutorial', () => {
   });
 
   test('tutorial copy routes each result to a clear next action', () => {
-    expect(tutorialTextureGuidance.powdery.next).toBe('Re-Spin');
-    expect(tutorialTextureGuidance.powdery.detail).toContain('before adding liquid');
-    expect(tutorialTextureGuidance.chalky.detail).toContain('spoon or silicone spatula');
-    expect(tutorialTextureGuidance['too-soft'].next).toBe('Back to freezer');
+    expect(tutorialTextureGuidance.powdery.next).toBe('Prepare the final cycle');
+    expect(tutorialTextureGuidance.powdery.detail).toContain('one tablespoon');
+    expect(tutorialTextureGuidance.chalky.detail).toContain('before the final cycle');
+    expect(tutorialTextureGuidance['too-soft'].next).toBe('Refreeze before the final cycle');
     expect(tutorialRecipePresentation(tutorialDraftSchema.parse({ version: 1, flavorId: 'cocoa' })).imageKey).toBe('chocolate');
+  });
+
+  test('persists an explicit correction decision and final program', () => {
+    const draft = tutorialDraftSchema.parse({ correctionDecision: 'apply', correctiveIngredientIds: ['milk-2'], secondCycleProgram: 'respin' });
+    expect(draft.correctionDecision).toBe('apply');
+    expect(draft.correctiveIngredientIds).toEqual(['milk-2']);
+    expect(draft.secondCycleProgram).toBe('respin');
   });
 
   test('footer Creamy announces empty, progress, and overflow states', async () => {
