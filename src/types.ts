@@ -27,6 +27,7 @@ export const nutritionSchema = z.object({
   protein: z.number().nonnegative(),
   carbs: z.number().nonnegative(),
   sugar: z.number().nonnegative(),
+  addedSugar: z.number().nonnegative().default(0),
   fat: z.number().nonnegative(),
   fiber: z.number().nonnegative().default(0),
 });
@@ -143,6 +144,7 @@ export const tutorialDraftSchema = z.object({
   helperId: z.string().nullable().default(null),
   sweetenerId: z.string().nullable().default(null),
   flavorId: z.string().nullable().default(null),
+  selectedIngredientIds: z.array(z.string()).default([]),
   mixInId: z.string().nullable().default(null),
   textureResult: tutorialTextureResultSchema.default('perfect'),
   recipeId: z.string().default(''),
@@ -176,6 +178,7 @@ export const userSettingsSchema = z.object({
     helperId: null,
     sweetenerId: null,
     flavorId: null,
+    selectedIngredientIds: [],
     mixInId: null,
     textureResult: 'perfect',
     recipeId: '',
@@ -187,11 +190,12 @@ export type Unit = z.infer<typeof unitSchema>;
 export type DisplayUnit = z.infer<typeof displayUnitSchema>;
 export type MeasurementMode = z.infer<typeof measurementModeSchema>;
 export type RecipeStyle = z.infer<typeof recipeStyleSchema>;
-export type Nutrition = z.infer<typeof nutritionSchema>;
+type ParsedNutrition = z.infer<typeof nutritionSchema>;
+export type Nutrition = Omit<ParsedNutrition, 'addedSugar'> & { addedSugar?: number };
 type ParsedIngredient = z.infer<typeof ingredientSchema>;
 type IngredientMetadataKey = 'brand' | 'description' | 'referenceLabel' | 'sourceUrl' | 'sourceCheckedAt' | 'popularityRank' | 'tags' | 'typicalUses' | 'substitutions' | 'cautions';
 // New catalog metadata stays optional to callers; persistence fills defaults on parse.
-export type Ingredient = Omit<ParsedIngredient, IngredientMetadataKey> & Partial<Pick<ParsedIngredient, IngredientMetadataKey>>;
+export type Ingredient = Omit<ParsedIngredient, IngredientMetadataKey | 'nutrition'> & Partial<Pick<ParsedIngredient, IngredientMetadataKey>> & { nutrition: Nutrition };
 export type RecipeIngredient = z.infer<typeof recipeIngredientSchema>;
 export type Recipe = z.infer<typeof recipeSchema>;
 export type UserSettings = z.infer<typeof userSettingsSchema>;

@@ -32,6 +32,11 @@ describe('first-pint tutorial', () => {
     expect(estimateVolumeMl(tutorialItems(fitted, seededIngredients))).toBeLessThanOrEqual(Math.floor(capacity * 0.88));
   });
 
+  test('multiple selections in one tutorial category are all included', () => {
+    const draft = tutorialDraftSchema.parse({ baseAdded: true, selectedIngredientIds: ['jello-vanilla-zero', 'xanthan-gum', 'strawberries', 'banana'] });
+    expect(tutorialItems(draft, seededIngredients).map((item) => item.ingredientId)).toEqual(expect.arrayContaining(['jello-vanilla-zero', 'xanthan-gum', 'strawberries', 'banana']));
+  });
+
   test('tutorial copy routes each result to a clear next action', () => {
     expect(tutorialTextureGuidance.powdery.next).toBe('Re-Spin');
     expect(tutorialTextureGuidance.powdery.detail).toContain('before adding liquid');
@@ -49,7 +54,7 @@ describe('first-pint tutorial', () => {
   });
 
   test('Creamy stays inside the tutorial viewport when dragged', () => {
-    expect(clampCreamyPosition({ x: -999, y: -999 }, 390, 844)).toEqual({ x: -242, y: -544 });
+    expect(clampCreamyPosition({ x: -999, y: -999 }, 390, 844)).toEqual({ x: -214, y: -544 });
     expect(clampCreamyPosition({ x: 90, y: 90 }, 390, 844)).toEqual({ x: 0, y: 48 });
   });
 });

@@ -5,10 +5,10 @@ const ingredient: Ingredient = { id: 'test-protein', name: 'Test Protein', subti
 
 describe('nutrition engine', () => {
   it('scales label values by the recipe amount', () => {
-    expect(calculateNutrition([{ ingredientId: ingredient.id, amount: 15, unit: 'g' }], [ingredient])).toEqual({ calories: 60, protein: 12, carbs: 1.5, sugar: 1, fat: 1, fiber: 0.5 });
+    expect(calculateNutrition([{ ingredientId: ingredient.id, amount: 15, unit: 'g' }], [ingredient])).toEqual({ calories: 60, protein: 12, carbs: 1.5, sugar: 1, addedSugar: 0, fat: 1, fiber: 0.5 });
   });
   it('ignores deleted ingredients without producing NaN', () => {
-    expect(calculateNutrition([{ ingredientId: 'missing', amount: 20, unit: 'g' }], [])).toEqual({ calories: 0, protein: 0, carbs: 0, sugar: 0, fat: 0, fiber: 0 });
+    expect(calculateNutrition([{ ingredientId: 'missing', amount: 20, unit: 'g' }], [])).toEqual({ calories: 0, protein: 0, carbs: 0, sugar: 0, addedSugar: 0, fat: 0, fiber: 0 });
   });
   it('estimates volume from canonical units', () => {
     expect(estimateVolumeMl([{ ingredientId: 'a', amount: 300, unit: 'ml' }, { ingredientId: 'b', amount: 10, unit: 'g' }, { ingredientId: 'c', amount: 1, unit: 'tsp' }])).toBe(314);

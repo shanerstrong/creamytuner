@@ -6,11 +6,13 @@ import { PintHero } from '@/src/components/pint-hero';
 import { FreezeTimerCard } from '@/src/components/freeze-timer-card';
 import { pintSpinFrames, recipeImages } from '@/src/assets';
 import { machineById } from '@/src/data/machines';
+import { CURRENT_ONBOARDING_VERSION } from '@/src/domain/tutorial';
 import { useApp } from '@/src/providers/app-provider';
 import { palette, radii, spacing } from '@/src/theme';
+import { tutorialDraftSchema } from '@/src/types';
 
 export default function HomeScreen() {
-  const { recipes, settings, toggleFavorite } = useApp();
+  const { recipes, settings, toggleFavorite, updateSettings } = useApp();
   const machine = machineById(settings.machineId);
   const recent = recipes.slice(0, 2);
   return (
@@ -23,6 +25,10 @@ export default function HomeScreen() {
       <View style={styles.heroCard}>
         <View style={styles.heroRow}><PintHero image={recipeImages.strawberry} frames={pintSpinFrames} label="Strawberry pint" size={142} /><View style={styles.heroCopyWrap}><Text style={styles.eyebrow}>YOUR EASIEST PINT YET</Text><Text style={styles.heroTitle}>{settings.firstPintCompleted ? 'Build your next pint' : 'Build your first pint'}</Text><Text style={styles.heroCopy}>Choose what sounds good. Creamy Tuner builds the recipe and guides every step.</Text></View></View>
         <GradientButton title="Build my pint" icon="arrow-right" onPress={() => router.push('/builder')} />
+        {settings.firstPintCompleted ? <View style={styles.replayButton}><GradientButton title="Replay first-pint tutorial" icon="school-outline" variant="secondary" onPress={() => {
+          const tutorialDraft = tutorialDraftSchema.parse({ machineId: settings.machineId, flowVersion: CURRENT_ONBOARDING_VERSION });
+          void updateSettings({ onboarded: false, tutorialPintVisible: true, tutorialDraft }).then(() => router.replace('/tutorial'));
+        }} /></View> : null}
         {settings.guidedBuilderDraft ? <GlassCard style={styles.resumeCard} onPress={() => router.push('/builder?resume=1')} accessibilityLabel={`Resume ${draftSummary(settings.guidedBuilderDraft)}`}><Icon name="history" color={palette.cyan} /><View style={styles.resumeCopy}><Text style={styles.resumeTitle}>Continue where you left off</Text><Text style={styles.resumeDetail}>{draftSummary(settings.guidedBuilderDraft)}</Text></View></GlassCard> : null}
       </View>
 
@@ -72,6 +78,7 @@ const styles = StyleSheet.create({
   heroTitle: { color: palette.text, fontSize: 23, lineHeight: 29, fontWeight: '900', marginTop: 3 },
   heroCopy: { ...textStyles.body, fontSize: 16, lineHeight: 23, marginTop: spacing.xs },
   resumeCard: { minHeight: 68, padding: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm, borderColor: 'rgba(78,217,232,0.3)' },
+  replayButton: { marginTop: spacing.sm },
   resumeCopy: { flex: 1 }, resumeTitle: { color: palette.text, fontSize: 15, lineHeight: 20, fontWeight: '900' }, resumeDetail: { color: palette.textMuted, fontSize: 13, lineHeight: 18, marginTop: 2, textTransform: 'capitalize' },
   tools: { gap: spacing.xs },
   toolRow: { minHeight: 72, padding: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

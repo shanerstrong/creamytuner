@@ -4,7 +4,7 @@ import { Animated, Platform, Pressable, StyleSheet, Text, View, useWindowDimensi
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useReducedMotion } from 'react-native-reanimated';
 
-import { MiniPintOverlay } from '@/src/components/tutorial/mini-pint-overlay';
+import { MiniPintOverlay, type IngredientAddition } from '@/src/components/tutorial/mini-pint-overlay';
 import { AppHeader, GlassCard, GradientButton, Icon, IconButton, LoadingScreen, Screen, type IconName } from '@/src/components/ui';
 import { machineById, machines } from '@/src/data/machines';
 import { createFreezeTimer } from '@/src/domain/freeze-timer';
@@ -62,6 +62,7 @@ export default function TutorialScreen() {
   const [transitioning, setTransitioning] = useState(false);
   const [busy, setBusy] = useState(false);
   const [timerMessage, setTimerMessage] = useState('');
+  const [addition, setAddition] = useState<IngredientAddition>({ kind: 'liquid', nonce: 0 });
   const initialized = useRef(false);
   const slide = useRef(new Animated.Value(0)).current;
   const reducedMotion = useReducedMotion();
@@ -93,6 +94,28 @@ export default function TutorialScreen() {
   };
 
   const changeDraft = (patch: Partial<TutorialDraft>) => persistDraft({ ...draft, ...patch });
+
+  const animateAddition = (kind: IngredientAddition['kind']) => setAddition((current) => ({ kind, nonce: current.nonce + 1 }));
+  const selectBase = (baseId: string) => {
+    const ingredient = ingredients.find((candidate) => candidate.id === baseId);
+    changeDraft({ baseId, baseAdded: true, baseAmountMl: ingredient?.defaultUnit === 'ml' ? ingredient.defaultAmount : 300 });
+    animateAddition('liquid');
+  };
+  const toggleIngredient = (id: string | null, group: readonly string[], legacyField: 'proteinId' | 'helperId' | 'sweetenerId' | 'flavorId', kind: IngredientAddition['kind']) => {
+    const current = new Set([
+      ...draft.selectedIngredientIds,
+      ...[draft.proteinId, draft.helperId, draft.sweetenerId, draft.flavorId].filter((value): value is string => Boolean(value)),
+    ]);
+    if (!id) {
+      group.forEach((groupId) => current.delete(groupId));
+      changeDraft({ selectedIngredientIds: [...current], [legacyField]: null });
+      return;
+    }
+    const adding = !current.has(id);
+    if (adding) current.add(id); else current.delete(id);
+    changeDraft({ selectedIngredientIds: [...current], [legacyField]: group.find((groupId) => current.has(groupId)) ?? null });
+    if (adding) animateAddition(kind);
+  };
 
   const transitionTo = (step: number, patch: Partial<TutorialDraft> = {}, settingsPatch: Partial<UserSettings> = {}) => {
     if (transitioning) return;
@@ -165,7 +188,7 @@ export default function TutorialScreen() {
   };
 
   const fitPint = () => changeDraft({ baseAmountMl: fitTutorialBaseAmount(draft, ingredients, machine.capacityMl) });
-  const page = renderTutorialPage({ draft, changeDraft, items, ingredients, validation, machine, program, timerMessage, recipes });
+  const page = renderTutorialPage({ draft, changeDraft, selectBase, toggleIngredient, items, ingredients, validation, machine, program, timerMessage, recipes });
   const nextDisabled = transitioning || busy || (draft.step === 1 && !draft.baseAdded) || (draft.step === 5 && validation.errors.length > 0);
 
   return (
@@ -188,14 +211,16 @@ export default function TutorialScreen() {
         {draft.step === 5 && validation.errors.length ? <GradientButton title="Fit this container" icon="arrow-collapse" onPress={fitPint} /> : null}
         {draft.step === 10 && draft.textureResult !== 'perfect' ? <GradientButton title="Open the matching fix" variant="secondary" icon="wrench-outline" onPress={() => { void finishTutorial(true); }} /> : null}
       </Screen>
-      {showMiniPint && settings.creamyHelperEnabled ? <View pointerEvents="box-none" style={styles.creamyLayer}><View pointerEvents="box-none" style={styles.creamyBounds}><MiniPintOverlay amountMl={validation.estimatedVolumeMl} capacityMl={machine.capacityMl} visible={settings.tutorialPintVisible} position={settings.creamyPosition} onToggle={() => void updateSettings({ tutorialPintVisible: !settings.tutorialPintVisible })} onPositionChange={(creamyPosition) => void updateSettings({ creamyPosition })} /></View></View> : null}
+      {showMiniPint && settings.creamyHelperEnabled ? <View pointerEvents="box-none" style={styles.creamyLayer}><View pointerEvents="box-none" style={styles.creamyBounds}><MiniPintOverlay amountMl={validation.estimatedVolumeMl} capacityMl={machine.capacityMl} visible={settings.tutorialPintVisible} position={settings.creamyPosition} addition={addition} onToggle={() => void updateSettings({ tutorialPintVisible: !settings.tutorialPintVisible })} onPositionChange={(creamyPosition) => void updateSettings({ creamyPosition })} /></View></View> : null}
     </View>
   );
 }
 
-function renderTutorialPage({ draft, changeDraft, items, ingredients, validation, machine, program, timerMessage, recipes }: {
+type TutorialPageProps = {
   draft: TutorialDraft;
   changeDraft: (patch: Partial<TutorialDraft>) => void;
+  selectBase: (baseId: string) => void;
+  toggleIngredient: (id: string | null, group: readonly string[], legacyField: 'proteinId' | 'helperId' | 'sweetenerId' | 'flavorId', kind: IngredientAddition['kind']) => void;
   items: ReturnType<typeof tutorialItems>;
   ingredients: ReturnType<typeof useApp>['ingredients'];
   validation: ReturnType<typeof validateRecipe>;
@@ -203,7 +228,21 @@ function renderTutorialPage({ draft, changeDraft, items, ingredients, validation
   program: ReturnType<typeof recommendProgram>;
   timerMessage: string;
   recipes: Recipe[];
-}) {
+};
+
+function renderTutorialPage(props: TutorialPageProps) {
+  const { draft, selectBase, toggleIngredient } = props;
+  if (draft.step === 1) {
+    const proteinSelected = draft.selectedIngredientIds.includes('whey-vanilla') || draft.proteinId === 'whey-vanilla';
+    return <Page icon="cup-water" eyebrow="BUILD THE BASE" title="Start with one base" intro="Creamy starts empty. Pick a base and watch it splash in."><ChoiceList choices={baseChoices} value={draft.baseAdded ? draft.baseId : ''} onChange={selectBase} /><GlassCard style={styles.optionalCard} onPress={() => toggleIngredient('whey-vanilla', ['whey-vanilla'], 'proteinId', 'spoon')} accessibilityLabel={proteinSelected ? 'Remove optional protein powder' : 'Add optional protein powder'}><View style={styles.optionalRow}><Icon name="arm-flex" color={palette.cyan} /><View style={styles.flex}><Text style={styles.optionalTitle}>Add vanilla protein powder?</Text><Text style={styles.optionalText}>{proteinSelected ? 'Included - tap to remove' : 'Optional - tap to add one measured scoop'}</Text></View><Icon name={proteinSelected ? 'check-circle' : 'plus-circle-outline'} color={proteinSelected ? palette.success : palette.textMuted} /></View></GlassCard></Page>;
+  }
+  if (draft.step === 2) return <Page icon="cup" eyebrow="BUILD TEXTURE" title="Choose one or more helpers" intro="You can combine pudding mix and a small measured amount of gum. Tap again to remove."><MultiChoiceList choices={helperChoices} selected={draft.selectedIngredientIds} legacyValue={draft.helperId} onChange={(value) => toggleIngredient(value, helperChoices.flatMap((choice) => choice.value ? [choice.value] : []), 'helperId', 'spoon')} /></Page>;
+  if (draft.step === 3) return <Page icon="shaker-outline" eyebrow="BALANCE THE FREEZE" title="Choose your sweeteners" intro="Mix and match if you want. Sweetener changes both flavor and how hard the pint freezes."><MultiChoiceList choices={sweetenerChoices} selected={draft.selectedIngredientIds} legacyValue={draft.sweetenerId} onChange={(value) => toggleIngredient(value, sweetenerChoices.flatMap((choice) => choice.value ? [choice.value] : []), 'sweetenerId', 'spoon')} /></Page>;
+  if (draft.step === 4) return <Page icon="fruit-cherries" eyebrow="MAKE IT YOURS" title="Add one or more flavors" intro="Combine flavors freely. Fruit drops in; extracts and cocoa use the matching animation."><MultiChoiceList choices={flavorChoices} selected={draft.selectedIngredientIds} legacyValue={draft.flavorId} onChange={(value) => toggleIngredient(value, flavorChoices.flatMap((choice) => choice.value ? [choice.value] : []), 'flavorId', value === 'strawberries' || value === 'banana' ? 'fruit' : value === 'vanilla' ? 'liquid' : 'spoon')} /></Page>;
+  return renderTutorialPageLegacy(props);
+}
+
+function renderTutorialPageLegacy({ draft, changeDraft, items, ingredients, validation, machine, program, timerMessage, recipes }: TutorialPageProps) {
   const nameOf = (id: string | null) => id ? ingredients.find((ingredient) => ingredient.id === id)?.name ?? 'None' : 'None';
   switch (draft.step) {
     case 0:
@@ -274,8 +313,16 @@ function ChoiceList({ choices, value, onChange }: { choices: Choice[]; value: st
   return <View style={styles.choiceList}>{choices.map((choice) => <ChoiceCard key={choice.id} {...choice} active={choice.id === value} onPress={() => onChange(choice.id)} />)}</View>;
 }
 
-function ChoiceCard({ title, detail, icon, active, onPress, compact = false }: Choice & { active: boolean; onPress: () => void; compact?: boolean }) {
-  return <Pressable onPress={onPress} accessibilityRole="radio" accessibilityState={{ selected: active }} accessibilityLabel={`${title}. ${detail}`} style={({ pressed }) => [styles.choice, compact && styles.choiceCompact, active && styles.choiceActive, pressed && styles.pressed]}><View style={[styles.choiceIcon, active && styles.choiceIconActive]}><Icon name={icon} color={active ? palette.pink : palette.lavender} /></View><View style={styles.flex}><Text style={styles.choiceTitle}>{title}</Text><Text style={styles.choiceDetail}>{detail}</Text></View><Icon name={active ? 'check-circle' : 'circle-outline'} color={active ? palette.success : palette.textFaint} /></Pressable>;
+function MultiChoiceList({ choices, selected, legacyValue, onChange }: { choices: (Choice & { value: string | null })[]; selected: string[]; legacyValue: string | null; onChange: (value: string | null) => void }) {
+  const activeValues = new Set([...selected, ...(legacyValue ? [legacyValue] : [])]);
+  return <View style={styles.choiceList}>{choices.map((choice) => {
+    const active = choice.value ? activeValues.has(choice.value) : activeValues.size === 0;
+    return <ChoiceCard key={choice.id} {...choice} active={active} multi onPress={() => onChange(choice.value)} />;
+  })}</View>;
+}
+
+function ChoiceCard({ title, detail, icon, active, onPress, compact = false, multi = false }: Choice & { active: boolean; onPress: () => void; compact?: boolean; multi?: boolean }) {
+  return <Pressable onPress={onPress} accessibilityRole={multi ? 'checkbox' : 'radio'} accessibilityState={multi ? { checked: active } : { selected: active }} accessibilityLabel={`${title}. ${detail}`} style={({ pressed }) => [styles.choice, compact && styles.choiceCompact, active && styles.choiceActive, pressed && styles.pressed]}><View style={[styles.choiceIcon, active && styles.choiceIconActive]}><Icon name={icon} color={active ? palette.pink : palette.lavender} /></View><View style={styles.flex}><Text style={styles.choiceTitle}>{title}</Text><Text style={styles.choiceDetail}>{detail}</Text></View><Icon name={active ? 'check-circle' : multi ? 'checkbox-blank-circle-outline' : 'circle-outline'} color={active ? palette.success : palette.textFaint} /></Pressable>;
 }
 
 function InfoCard({ number, title, detail, tone = 'default' }: { number: string; title: string; detail: string; tone?: 'default' | 'success' | 'danger' }) {

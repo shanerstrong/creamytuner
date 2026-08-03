@@ -3,7 +3,7 @@ import { render } from '@testing-library/react-native';
 import { BuilderQuestionStep, CompactProgress } from '@/src/components/builder/simple-steps';
 import { NutritionFactsPanel, NutritionSummary } from '@/src/components/nutrition';
 
-const nutrition = { calories: 325, protein: 30, carbs: 20, sugar: 12, fat: 8, fiber: 2 };
+const nutrition = { calories: 325, protein: 30, carbs: 20, sugar: 12, addedSugar: 6, fat: 8, fiber: 2 };
 
 describe('nutrition presentation', () => {
   it('keeps percent daily value out of the summary', async () => {
@@ -17,7 +17,8 @@ describe('nutrition presentation', () => {
     const screen = await render(<NutritionFactsPanel nutrition={nutrition} />);
     expect(screen.getByText('% Daily Value*')).toBeTruthy();
     expect(screen.getByText('Dietary Fiber')).toBeTruthy();
-    expect(screen.getByText('Total Sugars')).toBeTruthy();
+      expect(screen.getByText('Total Sugars')).toBeTruthy();
+      expect(screen.getByText('Includes Added Sugars')).toBeTruthy();
   });
 });
 

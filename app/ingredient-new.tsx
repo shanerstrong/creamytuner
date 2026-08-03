@@ -20,6 +20,7 @@ export default function NewIngredientScreen() {
   const [protein, setProtein] = useState('');
   const [carbs, setCarbs] = useState('');
   const [sugar, setSugar] = useState('');
+  const [addedSugar, setAddedSugar] = useState('');
   const [fat, setFat] = useState('');
 
   const submit = async () => {
@@ -36,7 +37,7 @@ export default function NewIngredientScreen() {
       defaultUnit: unit,
       defaultAmount: referenceAmount,
       referenceAmount,
-      nutrition: { calories: Number(calories) || 0, protein: Number(protein) || 0, carbs: Number(carbs) || 0, sugar: Number(sugar) || 0, fat: Number(fat) || 0, fiber: 0 },
+      nutrition: { calories: Number(calories) || 0, protein: Number(protein) || 0, carbs: Number(carbs) || 0, sugar: Number(sugar) || 0, addedSugar: Number(addedSugar) || 0, fat: Number(fat) || 0, fiber: 0 },
       isCustom: true,
     });
     router.back();
@@ -56,6 +57,7 @@ export default function NewIngredientScreen() {
         <View style={styles.half}><Field label="Protein (g)" value={protein} onChangeText={setProtein} keyboardType="decimal-pad" /></View>
         <View style={styles.half}><Field label="Carbs (g)" value={carbs} onChangeText={setCarbs} keyboardType="decimal-pad" /></View>
         <View style={styles.half}><Field label="Sugar (g)" value={sugar} onChangeText={setSugar} keyboardType="decimal-pad" /></View>
+        <View style={styles.half}><Field label="Added sugars (g)" value={addedSugar} onChangeText={setAddedSugar} keyboardType="decimal-pad" /></View>
         <View style={styles.half}><Field label="Fat (g)" value={fat} onChangeText={setFat} keyboardType="decimal-pad" /></View>
       </View>
       <Text style={styles.note}>Creamy Tuner stores this data only on your device. Values are estimates based on what you enter.</Text>

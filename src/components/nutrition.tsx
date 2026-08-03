@@ -16,7 +16,7 @@ export function NutritionSummary({ nutrition, compact = false }: { nutrition: Nu
 }
 
 export function NutritionFactsPanel({ nutrition, servingLabel = '1 pint' }: { nutrition: Nutrition; servingLabel?: string }) {
-  const rows: [string, number, number | null][] = [['Total Fat', nutrition.fat, 78], ['Total Carbohydrate', nutrition.carbs, 275], ['Dietary Fiber', nutrition.fiber, 28], ['Total Sugars', nutrition.sugar, null], ['Protein', nutrition.protein, 50]];
+  const rows: [string, number, number | null, boolean?][] = [['Total Fat', nutrition.fat, 78], ['Total Carbohydrate', nutrition.carbs, 275], ['Dietary Fiber', nutrition.fiber, 28], ['Total Sugars', nutrition.sugar, null], ['Includes Added Sugars', nutrition.addedSugar ?? 0, 50, true], ['Protein', nutrition.protein, 50]];
   return (
     <View style={styles.facts} accessibilityLabel="Expanded estimated nutrition">
       <Text style={styles.factsTitle}>Estimated nutrition</Text>
@@ -28,7 +28,7 @@ export function NutritionFactsPanel({ nutrition, servingLabel = '1 pint' }: { nu
       <View style={styles.row}><Text style={styles.caloriesFact}>Calories</Text><Text style={styles.caloriesNumber}>{Math.round(nutrition.calories)}</Text></View>
       <View style={styles.ruleMedium} />
       <Text style={styles.dvHeader}>% Daily Value*</Text>
-      {rows.map(([label, value, daily]) => <View key={label} style={styles.factRow}><Text style={styles.factLabel}>{label}</Text><View style={styles.factRight}><Text style={styles.factValue}>{grams(value)}</Text>{daily ? <Text style={styles.dv}>{Math.round((value / daily) * 100)}%</Text> : null}</View></View>)}
+      {rows.map(([label, value, daily, indented]) => <View key={label} style={styles.factRow}><Text style={[styles.factLabel, indented && styles.factLabelIndented]}>{label}</Text><View style={styles.factRight}><Text style={styles.factValue}>{grams(value)}</Text>{daily ? <Text style={styles.dv}>{Math.round((value / daily) * 100)}%</Text> : null}</View></View>)}
       <View style={styles.ruleMedium} />
       <Text style={styles.footnote}>*Daily Values use general U.S. reference amounts. Individual needs vary.</Text>
     </View>
@@ -60,6 +60,7 @@ const styles = StyleSheet.create({
   dvHeader: { color: '#141414', fontSize: 13, lineHeight: 18, fontWeight: '900', textAlign: 'right' },
   factRow: { minHeight: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#777', gap: spacing.sm },
   factLabel: { color: '#141414', fontSize: 16, lineHeight: 22, fontWeight: '800', flex: 1 },
+  factLabelIndented: { paddingLeft: spacing.md, fontSize: 15, fontWeight: '700' },
   factRight: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: spacing.sm },
   factValue: { color: '#141414', fontSize: 15, lineHeight: 21 },
   dv: { color: '#141414', fontSize: 15, lineHeight: 21, fontWeight: '900', minWidth: 42, textAlign: 'right' },

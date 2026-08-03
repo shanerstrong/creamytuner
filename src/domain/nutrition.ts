@@ -1,13 +1,15 @@
 import type { DisplayUnit, Ingredient, MeasurementMode, Nutrition, RecipeIngredient, Unit } from '@/src/types';
 
+type NutritionTotals = Nutrition & { addedSugar: number };
+
 export const KITCHEN_ML_PER_CUP = 240;
 export const KITCHEN_ML_PER_TBSP = 15;
 export const KITCHEN_ML_PER_TSP = 5;
 
-export const zeroNutrition = (): Nutrition => ({ calories: 0, protein: 0, carbs: 0, sugar: 0, fat: 0, fiber: 0 });
+export const zeroNutrition = (): NutritionTotals => ({ calories: 0, protein: 0, carbs: 0, sugar: 0, addedSugar: 0, fat: 0, fiber: 0 });
 const round = (value: number, digits = 1) => Number(value.toFixed(digits));
 
-export function calculateNutrition(items: RecipeIngredient[], ingredients: Ingredient[]): Nutrition {
+export function calculateNutrition(items: RecipeIngredient[], ingredients: Ingredient[]): NutritionTotals {
   const total = items.reduce((sum, item) => {
     const ingredient = ingredients.find((candidate) => candidate.id === item.ingredientId);
     if (!ingredient) return sum;
@@ -17,11 +19,12 @@ export function calculateNutrition(items: RecipeIngredient[], ingredients: Ingre
       protein: sum.protein + ingredient.nutrition.protein * ratio,
       carbs: sum.carbs + ingredient.nutrition.carbs * ratio,
       sugar: sum.sugar + ingredient.nutrition.sugar * ratio,
+      addedSugar: (sum.addedSugar ?? 0) + (ingredient.nutrition.addedSugar ?? 0) * ratio,
       fat: sum.fat + ingredient.nutrition.fat * ratio,
       fiber: sum.fiber + ingredient.nutrition.fiber * ratio,
     };
   }, zeroNutrition());
-  return { calories: Math.round(total.calories), protein: round(total.protein), carbs: round(total.carbs), sugar: round(total.sugar), fat: round(total.fat), fiber: round(total.fiber) };
+  return { calories: Math.round(total.calories), protein: round(total.protein), carbs: round(total.carbs), sugar: round(total.sugar), addedSugar: round(total.addedSugar ?? 0), fat: round(total.fat), fiber: round(total.fiber) };
 }
 
 export function estimateVolumeMl(items: RecipeIngredient[]): number {
