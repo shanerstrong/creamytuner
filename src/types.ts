@@ -295,6 +295,7 @@ export type Ingredient = Omit<ParsedIngredient, IngredientMetadataKey | 'nutriti
 export type RecipeIngredient = z.infer<typeof recipeIngredientSchema>;
 export type Recipe = z.infer<typeof recipeSchema>;
 export type UserSettings = z.infer<typeof userSettingsSchema>;
+export type DietaryPreference = z.infer<typeof dietaryPreferenceSchema>;
 export type BuilderMode = 'guided' | 'quick';
 export type GuidedBuilderDraft = NonNullable<UserSettings['guidedBuilderDraft']>;
 export type FreezeTimer = z.infer<typeof freezeTimerSchema>;

@@ -41,7 +41,7 @@ export function FooterCreamy({ amountMl, capacityMl, addition }: { amountMl: num
     if (angry) return;
     taps.current += 1;
     if (taps.current < 20) {
-      if (!reducedMotion) scale.value = withSequence(withSpring(1.12, { damping: 7 }), withSpring(1, { damping: 9 }));
+      if (!reducedMotion) scale.value = withSequence(withTiming(1.12, { duration: 180 }), withTiming(1, { duration: 320 }));
       return;
     }
     taps.current = 0;

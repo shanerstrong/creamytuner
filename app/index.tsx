@@ -44,6 +44,10 @@ export default function WelcomeScreen() {
         <View style={[styles.ingredientBubble, styles.ingredientScoop]}><Icon name="spoon-sugar" color={palette.warning} size={24} /></View>
         <View style={[styles.mascotCrop, veryCompact && styles.mascotCropVeryCompact]} accessibilityLabel="Creamy waiting in an empty clear pint">
           <Image source={require('@/assets/images/mascot/creamy-fill-progress.png')} contentFit="fill" style={[styles.mascotAtlas, veryCompact && styles.mascotAtlasVeryCompact]} />
+          <View style={[styles.welcomeFace, veryCompact && styles.welcomeFaceVeryCompact]} pointerEvents="none">
+            <View style={[styles.welcomeEyes, veryCompact && styles.welcomeEyesVeryCompact]}><View style={[styles.welcomeEye, veryCompact && styles.welcomeEyeVeryCompact]} /><View style={[styles.welcomeEye, veryCompact && styles.welcomeEyeVeryCompact]} /></View>
+            <View style={[styles.welcomeSmile, veryCompact && styles.welcomeSmileVeryCompact]} />
+          </View>
         </View>
         {!veryCompact ? <Text style={styles.heroPrompt}>Pick ingredients. Creamy guides the rest.</Text> : null}
       </View>
@@ -88,6 +92,14 @@ const styles = StyleSheet.create({
   mascotCropVeryCompact: { width: 101, height: 89 },
   mascotAtlas: { width: 806, height: 442, transform: [{ translateY: -43 }] },
   mascotAtlasVeryCompact: { width: 403, height: 221, transform: [{ translateY: -22 }] },
+  welcomeFace: { position: 'absolute', left: 58, top: 75, width: 86, height: 60, borderRadius: 28, backgroundColor: 'rgba(42,25,78,0.92)', alignItems: 'center', justifyContent: 'center' },
+  welcomeFaceVeryCompact: { left: 29, top: 38, width: 43, height: 30, borderRadius: 14 },
+  welcomeEyes: { flexDirection: 'row', gap: 22, transform: [{ translateY: -5 }] },
+  welcomeEyesVeryCompact: { gap: 11, transform: [{ translateY: -2 }] },
+  welcomeEye: { width: 8, height: 11, borderRadius: 5, backgroundColor: palette.white },
+  welcomeEyeVeryCompact: { width: 4, height: 6, borderRadius: 3 },
+  welcomeSmile: { width: 30, height: 14, borderBottomWidth: 4, borderBottomColor: palette.pink, borderRadius: 16, transform: [{ translateY: -1 }] },
+  welcomeSmileVeryCompact: { width: 15, height: 7, borderBottomWidth: 2, borderRadius: 8 },
   ingredientBubble: { position: 'absolute', zIndex: 2, width: 48, height: 48, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)', backgroundColor: palette.panelRaised },
   ingredientMilk: { left: '13%', top: '24%', transform: [{ rotate: '-12deg' }] },
   ingredientFruit: { right: '13%', top: '18%', transform: [{ rotate: '10deg' }] },
