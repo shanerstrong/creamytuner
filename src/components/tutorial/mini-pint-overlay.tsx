@@ -91,9 +91,9 @@ export function MiniPintOverlay({ amountMl, capacityMl, visible, position, addit
 
   const moodCopy = mood === 'scared' ? 'Scared because the pint is too full.' : mood === 'bored' ? 'Bored because the pint is empty.' : 'Happy because ingredients were added.';
   return (
-    <Animated.View {...panResponder.panHandlers} style={[styles.overlay, danger && styles.overlayDanger, positionStyle]} accessibilityLabel={`Creamy, live pint helper. ${fill.amountMl} milliliters of ${fill.capacityMl}. ${fill.title}. ${moodCopy} Drag Creamy to move him.`} accessibilityLiveRegion="polite">
+    <Animated.View style={[styles.overlay, danger && styles.overlayDanger, positionStyle]} accessibilityLabel={`Creamy, live pint helper. ${fill.amountMl} milliliters of ${fill.capacityMl}. ${fill.title}. ${moodCopy} Drag the pint to move Creamy.`} accessibilityLiveRegion="polite">
       <Pressable onPress={onToggle} accessibilityRole="button" accessibilityLabel="Hide Creamy helper" style={styles.hideButton}><Icon name="eye-off-outline" size={22} color={palette.textMuted} /></Pressable>
-      <View style={styles.pintWrap}>
+      <View {...panResponder.panHandlers} style={styles.pintWrap} accessibilityRole="adjustable" accessibilityLabel="Drag Creamy pint">
         <AdditionAnimation kind={addition?.kind ?? 'liquid'} fallingStyle={fallingStyle} splashStyle={splashStyle} />
         {danger ? <View style={styles.spill} /> : null}
         <View style={[styles.pint, danger && styles.pintDanger]}>
