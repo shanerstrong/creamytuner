@@ -1,4 +1,4 @@
-import { act, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 
 jest.mock('expo-video', () => {
   const React = require('react');
@@ -113,5 +113,17 @@ describe('welcome mascot', () => {
     expect(screen.queryByRole('button', { name: 'Creamy mascot' })).toBeNull();
     expect(screen.getByTestId('welcome-creamy-hero')).toBeTruthy();
     expect(screen.queryByTestId('welcome-creamy-video')).toBeNull();
+  });
+
+  it('shows a funny face and AI ice-cream joke when Creamy is activated', async () => {
+    jest.useFakeTimers();
+    const screen = await render(<WelcomeCreamy />);
+
+    await fireEvent(screen.getByRole('button', { name: 'Creamy mascot' }), 'accessibilityTap');
+
+    expect(screen.getByTestId('welcome-creamy-reaction-face')).toBeTruthy();
+    expect(screen.getByTestId('welcome-creamy-joke')).toBeTruthy();
+    await act(async () => { jest.runOnlyPendingTimers(); });
+    jest.useRealTimers();
   });
 });

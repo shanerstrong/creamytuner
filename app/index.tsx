@@ -1,10 +1,12 @@
 import { router, usePathname } from 'expo-router';
+import { Image } from 'expo-image';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { GradientButton, Icon, LoadingScreen, Screen, textStyles } from '@/src/components/ui';
 import { WelcomeCreamy } from '@/src/components/creamy/welcome-creamy';
+import { WELCOME_WORDMARK_AI } from '@/src/components/creamy/mascot-assets';
 import { CURRENT_ONBOARDING_VERSION } from '@/src/domain/tutorial';
 import { useApp } from '@/src/providers/app-provider';
 import { palette, radii, spacing } from '@/src/theme';
@@ -53,9 +55,9 @@ export default function WelcomeScreen() {
 }
 
 function WelcomeWordmark({ compact }: { compact: boolean }) {
-  return <View style={styles.wordmarkWrap} accessibilityLabel="Creamy Tuner">
-    <View style={[styles.logoMark, compact && styles.logoMarkCompact]}><View style={styles.logoSwirl}><View style={styles.logoSwirlTop} /><View style={styles.logoSwirlMiddle} /><View style={styles.logoSwirlBottom} /></View><View style={styles.logoPint}><View style={styles.logoPintLine} /></View></View>
-    <View><View style={styles.wordmarkRow}><Text style={[styles.wordCreamy, compact && styles.wordCompact]}>Creamy</Text><Text style={[styles.wordTuner, compact && styles.wordCompact]}>Tuner</Text></View><Text style={styles.wordTag}>BUILD {'\u00B7'} FREEZE {'\u00B7'} SPIN</Text></View>
+  return <View style={styles.wordmarkWrap} accessible accessibilityRole="image" accessibilityLabel="CreamyTuner">
+    <Image source={WELCOME_WORDMARK_AI} contentFit="contain" cachePolicy="memory-disk" accessible={false} style={[styles.wordmarkImage, compact && styles.wordmarkImageCompact]} />
+    <Text style={styles.wordTag}>BUILD {'\u00B7'} FREEZE {'\u00B7'} SPIN</Text>
   </View>;
 }
 
@@ -64,20 +66,10 @@ const styles = StyleSheet.create({
   contentCompact: { paddingTop: spacing.xs, paddingBottom: spacing.xs },
   brand: { alignItems: 'center', gap: spacing.md },
   brandCompact: { gap: 6 },
-  wordmarkWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  logoMark: { width: 52, height: 56, alignItems: 'center', justifyContent: 'flex-end' },
-  logoMarkCompact: { width: 42, height: 45, transform: [{ scale: 0.82 }] },
-  logoPint: { width: 34, height: 29, borderWidth: 2, borderColor: palette.white, borderTopWidth: 3, borderRadius: 7, backgroundColor: 'rgba(78,217,232,0.10)', alignItems: 'center' },
-  logoPintLine: { width: 25, height: 3, borderRadius: 2, backgroundColor: palette.cyan, marginTop: 6 },
-  logoSwirl: { position: 'absolute', top: 0, width: 34, height: 31, alignItems: 'center', justifyContent: 'flex-end' },
-  logoSwirlTop: { width: 8, height: 7, borderRadius: 6, backgroundColor: palette.pink, transform: [{ rotate: '-18deg' }] },
-  logoSwirlMiddle: { width: 20, height: 8, borderRadius: 10, backgroundColor: palette.lavender, marginTop: -1, transform: [{ rotate: '8deg' }] },
-  logoSwirlBottom: { width: 31, height: 9, borderRadius: 11, backgroundColor: palette.pink, marginTop: -1, transform: [{ rotate: '-5deg' }] },
-  wordmarkRow: { flexDirection: 'row', alignItems: 'baseline' },
-  wordCreamy: { color: palette.white, fontSize: 34, lineHeight: 38, fontWeight: '900', letterSpacing: -1.2 },
-  wordTuner: { color: palette.pink, fontSize: 34, lineHeight: 38, fontWeight: '900', letterSpacing: -1.2 },
-  wordCompact: { fontSize: 28, lineHeight: 32 },
-  wordTag: { color: palette.cyan, fontSize: 13, lineHeight: 18, fontWeight: '900', letterSpacing: 1.35, marginLeft: 2 },
+  wordmarkWrap: { alignItems: 'center' },
+  wordmarkImage: { width: 340, height: 96 },
+  wordmarkImageCompact: { width: 278, height: 78 },
+  wordTag: { color: palette.cyan, fontSize: 12, lineHeight: 16, fontWeight: '900', letterSpacing: 1.7, marginTop: -5 },
   title: { color: palette.text, fontSize: 32, lineHeight: 37, fontWeight: '900', letterSpacing: -0.8, textAlign: 'center' },
   titleCompact: { fontSize: 24, lineHeight: 28 },
   titleAccent: { color: palette.pink },

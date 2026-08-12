@@ -2,7 +2,7 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import { StyleSheet, Text } from 'react-native';
 
 import { TUTORIAL_CREAMY_FRAMES } from '@/src/components/creamy/mascot-assets';
-import { CREAMY_DAD_JOKES } from '@/src/components/creamy/dad-jokes';
+import { CREAMY_DAD_JOKES, CREAMY_DARK_DAD_JOKES } from '@/src/components/creamy/dad-jokes';
 import { FooterCreamy } from '@/src/components/tutorial/footer-creamy';
 import { OverflowAwareScroll } from '@/src/components/tutorial/overflow-aware-scroll';
 import { TutorialAmountEditor } from '@/src/components/tutorial/tutorial-amount-editor';
@@ -235,12 +235,15 @@ describe('first-pint tutorial', () => {
     expect(screen.getByTestId('creamy-ingredient-effect')).toBeTruthy();
     await screen.rerender(<FooterCreamy amountMl={0} capacityMl={473} addition={addition} motionEnabled={false} />);
     const mascot = screen.getByRole('button', { name: 'Creamy mascot' });
-    for (let tap = 0; tap < 20; tap += 1) await fireEvent.press(mascot);
+    await fireEvent.press(mascot);
+    expect(screen.getByTestId('creamy-mascot-resting-frame').props.source).toEqual([TUTORIAL_CREAMY_FRAMES[1]]);
+    for (let tap = 1; tap < 20; tap += 1) await fireEvent.press(mascot);
     expect(screen.getByTestId('creamy-mascot-resting-frame').props.source).toEqual([TUTORIAL_CREAMY_FRAMES[15]]);
     await act(async () => { jest.advanceTimersByTime(700); });
     expect(screen.getByTestId('creamy-dad-joke')).toBeTruthy();
-    expect(CREAMY_DAD_JOKES).toHaveLength(50);
-    expect(new Set(CREAMY_DAD_JOKES).size).toBe(50);
+    expect(CREAMY_DAD_JOKES).toHaveLength(20);
+    expect(new Set(CREAMY_DAD_JOKES).size).toBe(20);
+    expect(CREAMY_DARK_DAD_JOKES).toHaveLength(4);
     jest.useRealTimers();
   });
 

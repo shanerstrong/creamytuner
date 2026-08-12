@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, View } from 'react-native';
 
 import { PersistentBottomNav } from '@/src/components/persistent-bottom-nav';
@@ -17,7 +18,8 @@ export const unstable_settings = {
 export default function RootLayout() {
   useEffect(() => { configureFreezeNotifications(); }, []);
   return (
-    <PersistenceProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <PersistenceProvider>
         <ThemeProvider value={{ ...DarkTheme, colors: { ...DarkTheme.colors, background: palette.ink, card: palette.navy, primary: palette.pink, text: palette.text, border: palette.border } }}>
           <View style={styles.shell}>
             <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.ink }, animation: 'fade' }}>
@@ -39,8 +41,9 @@ export default function RootLayout() {
             <StatusBar style="light" />
           </View>
         </ThemeProvider>
-    </PersistenceProvider>
+      </PersistenceProvider>
+    </GestureHandlerRootView>
   );
 }
 
-const styles = StyleSheet.create({ shell: { flex: 1, backgroundColor: palette.ink } });
+const styles = StyleSheet.create({ root: { flex: 1 }, shell: { flex: 1, backgroundColor: palette.ink } });

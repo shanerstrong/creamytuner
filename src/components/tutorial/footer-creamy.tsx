@@ -33,6 +33,8 @@ const provenanceLabels: Record<CreamyTipProvenance, string> = {
   creamytuner: 'CreamyTuner suggestion',
 };
 
+const TUTORIAL_REACTION_FRAMES = [1, 3, 5, 7, 9, 11, 13, 14] as const;
+
 function estimatedFillLabel(fill: ReturnType<typeof getPintFillState>) {
   if (fill.status === 'empty') return 'Empty';
   if (fill.status === 'overflow') return 'Too full';
@@ -81,19 +83,22 @@ export function FooterCreamy({
   const bubble = useSharedValue(0);
   const mouthBlend = useSharedValue(0);
   const taps = useRef(0);
+  const faceCursor = useRef(-1);
   const lastJokeIndex = useRef(-1);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reactionResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const talkingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blinkTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const blinkResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [angry, setAngry] = useState(false);
   const [blinking, setBlinking] = useState(false);
+  const [reactionFrame, setReactionFrame] = useState<number | null>(null);
   const [effectKind, setEffectKind] = useState<TutorialAddition['kind']>('liquid');
   const [tipRendered, setTipRendered] = useState(Boolean(tipEnabled && tip && !tipDismissed));
   const [detailOpen, setDetailOpen] = useState(false);
   const [dadJoke, setDadJoke] = useState<string | null>(null);
-  const restingFrame = angry ? 15 : celebrate ? 14 : framePair;
+  const restingFrame = angry ? 15 : celebrate ? 14 : reactionFrame ?? framePair;
 
   useEffect(() => {
     void preloadCreamyFrames([...TUTORIAL_CREAMY_FRAMES, TUTORIAL_CREAMY_BLINK]).catch(() => undefined);
@@ -193,6 +198,7 @@ export function FooterCreamy({
 
   useEffect(() => () => {
     if (resetTimer.current) clearTimeout(resetTimer.current);
+    if (reactionResetTimer.current) clearTimeout(reactionResetTimer.current);
     if (bubbleTimer.current) clearTimeout(bubbleTimer.current);
     if (blinkTimer.current) clearInterval(blinkTimer.current);
     if (blinkResetTimer.current) clearTimeout(blinkResetTimer.current);
@@ -204,8 +210,15 @@ export function FooterCreamy({
     if (animate) scale.value = withSequence(withTiming(1.12, { duration: 160 }), withTiming(1, { duration: 300 }));
     if (tipEnabled && tip) openTip();
     taps.current += 1;
-    if (taps.current < 20) return;
+    if (taps.current < 20) {
+      faceCursor.current = (faceCursor.current + 1) % TUTORIAL_REACTION_FRAMES.length;
+      setReactionFrame(TUTORIAL_REACTION_FRAMES[faceCursor.current]);
+      if (reactionResetTimer.current) clearTimeout(reactionResetTimer.current);
+      reactionResetTimer.current = setTimeout(() => setReactionFrame(null), animate ? 760 : 420);
+      return;
+    }
     taps.current = 0;
+    setReactionFrame(null);
     closeTip(false);
     setDadJoke(null);
     stopTalking();
@@ -245,7 +258,7 @@ export function FooterCreamy({
     transform: [{ translateY: interpolate(bubble.value, [0, 1], [8, 0]) }, { scale: interpolate(bubble.value, [0, 1], [0.96, 1]) }],
   }));
   const talkingStyle = useAnimatedStyle(() => ({ opacity: mouthBlend.value }));
-  const mascotHint = tipEnabled && tip ? 'Replays the current tip and reacts when tapped' : 'Creamy reacts when tapped';
+  const mascotHint = tipEnabled && tip ? 'Replays the current tip and tries a different face when tapped' : 'Creamy tries a different face when tapped';
   const tipAccessibilityLabel = tip
     ? `${provenanceLabels[tip.provenance ?? 'creamytuner']}. ${tip.text}${detailOpen ? ` ${tip.detail}` : ''}`
     : undefined;
@@ -308,7 +321,7 @@ export function FooterCreamy({
             accessible={false}
             style={styles.mascotImage}
           />
-          <View pointerEvents="none" style={[styles.talkingFrame, (angry || celebrate) && styles.hidden]}>
+          <View pointerEvents="none" style={[styles.talkingFrame, (angry || celebrate || reactionFrame !== null) && styles.hidden]}>
             <Animated.View style={[styles.talkingFrame, talkingStyle]}>
               <Image
                 testID="creamy-mascot-talking-frame"
