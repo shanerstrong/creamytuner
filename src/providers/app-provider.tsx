@@ -54,7 +54,13 @@ export function AppProvider({ children }: React.PropsWithChildren) {
     ]);
     setRecipes(storedRecipes);
     setCustomIngredients(storedIngredients);
-    setSettings(storedSettings);
+    const migratedSettings = userSettingsSchema.parse({
+      ...storedSettings,
+      dietaryPreferences: storedSettings.dietaryPreferences.length ? storedSettings.dietaryPreferences : storedSettings.tutorialDraft.dietaryPreferences,
+      foodAllergies: storedSettings.foodAllergies.length ? storedSettings.foodAllergies : storedSettings.tutorialDraft.foodAllergies,
+      customAvoidFoods: storedSettings.customAvoidFoods.length ? storedSettings.customAvoidFoods : storedSettings.tutorialDraft.customAvoidFoods,
+    });
+    setSettings(migratedSettings);
     setReady(true);
   }, [db]);
 

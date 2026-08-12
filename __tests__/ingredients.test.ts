@@ -18,12 +18,16 @@ describe('ingredient catalog', () => {
   it('fills compatibility defaults for old ingredients and settings', () => {
     const old = ingredientSchema.parse({ id: 'old', name: 'Old item', category: 'base', subtitle: '', defaultUnit: 'ml', defaultAmount: 100, referenceAmount: 100, nutrition: { calories: 1, protein: 0, carbs: 0, sugar: 0, fat: 0 } });
     expect(old.tags).toEqual([]);
+    expect(old.allergens).toEqual([]);
+    expect(old.allergenDataStatus).toBe('incomplete');
     const settings = userSettingsSchema.parse({});
     expect(settings.ingredientLibraryView).toBe('list');
     expect(settings.tutorialMode).toBe(true);
     expect(settings.firstPintCompleted).toBe(false);
     expect(settings.guidedBuilderDraft).toBeNull();
     expect(settings.activeFreezeTimer).toBeNull();
+    expect(settings.foodAllergies).toEqual([]);
+    expect(settings.creamyTipsEnabled).toBe(true);
   });
   it('validates resumable guided builder drafts without a database migration', () => {
     const settings = userSettingsSchema.parse({ guidedBuilderDraft: {

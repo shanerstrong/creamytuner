@@ -141,6 +141,7 @@ export type BeginnerRecommendation = {
   items: RecipeIngredient[];
   expectedTexture: string;
   rationale: string;
+  blockedReason: string | null;
 };
 
 const answerLabels = {
@@ -197,6 +198,19 @@ export function recommendBeginnerRecipe(input: { answers: BeginnerBuilderAnswers
     items = items.map((item) => item.unit === 'ml' ? { ...item, amount: Math.max(1, Number((item.amount * scale).toFixed(1))) } : item);
   }
   items = items.filter((item) => input.ingredients.some((ingredient) => ingredient.id === item.ingredientId));
+  const ingredientsById = new Map(input.ingredients.map((ingredient) => [ingredient.id, ingredient]));
+  let usedFallbackBase = false;
+  let blockedReason: string | null = null;
+  if (!items.some((item) => ingredientsById.get(item.ingredientId)?.category === 'base')) {
+    const fallbackBase = input.ingredients.find((ingredient) => ingredient.category === 'base' && ingredient.defaultUnit === 'ml')
+      ?? input.ingredients.find((ingredient) => ingredient.category === 'base');
+    if (fallbackBase) {
+      items.unshift({ ingredientId: fallbackBase.id, amount: fallbackBase.defaultAmount, unit: fallbackBase.defaultUnit });
+      usedFallbackBase = true;
+    } else {
+      blockedReason = 'No base ingredient matches all of your current dietary and allergy settings. Review Food needs or add a label-checked custom base before continuing.';
+    }
+  }
 
   const flavorName = answers.flavor === 'surprise-me' ? 'Cookies & Vanilla' : `${answers.flavor[0].toUpperCase()}${answers.flavor.slice(1)}`;
   const style: RecipeStyle = answers.texture === 'fruit-forward' ? 'sorbet' : answers.texture === 'light' || answers.goal === 'lower-calorie' ? 'lite-ice-cream' : answers.texture === 'thick' ? 'smoothie-bowl' : 'ice-cream';
@@ -206,7 +220,12 @@ export function recommendBeginnerRecipe(input: { answers: BeginnerBuilderAnswers
     style,
     items,
     expectedTexture,
-    rationale: answers.goal === 'dairy-free'
+    blockedReason,
+    rationale: blockedReason
+      ? 'Creamy Tuner stopped before suggesting an incomplete recipe because every available base is restricted or still needs a label check.'
+      : usedFallbackBase
+        ? 'This uses the first eligible base that matches all of your current food settings. Review its package label before preparing your pint.'
+        : answers.goal === 'dairy-free'
       ? 'Soy milk, plant protein, sweetener, and guar create body without dairy.'
       : answers.goal === 'high-protein'
         ? 'Protein, blended dairy, and a small amount of stabilizer build a dense base.'

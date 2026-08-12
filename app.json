@@ -19,6 +19,7 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "resize",
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -44,8 +45,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Creamy Tuner would like to access your photos so you can choose or replace a photo for your saved pint.",
-          "cameraPermission": "Allow Creamy Tuner to take a photo of your finished pint.",
+          "photosPermission": "Creamy Tuner opens only the photos you choose for a profile, recipe, or ingredient label. Ingredient labels can be read on-device and are not uploaded.",
+          "cameraPermission": "Creamy Tuner uses the camera only when you choose to take a profile, finished-pint, or ingredient-label photo. Label text is read on-device and photos stay on your device.",
           "microphonePermission": false
         }
       ],
@@ -55,7 +56,8 @@
           "color": "#F14E9B",
           "defaultChannel": "freeze-reminders"
         }
-      ]
+      ],
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,

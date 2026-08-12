@@ -1,6 +1,37 @@
-import { render } from '@testing-library/react-native';
+import { act, render } from '@testing-library/react-native';
+
+jest.mock('expo-video', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const players: Array<Record<string, unknown>> = [];
+
+  return {
+    __players: players,
+    VideoView: (props: object) => React.createElement(View, props),
+    useVideoPlayer: (_source: unknown, setup?: (value: Record<string, unknown>) => void) => React.useMemo(() => {
+      const listeners: Record<string, (...args: unknown[]) => void> = {};
+      const player = {
+        __emit: (event: string, ...args: unknown[]) => listeners[event]?.(...args),
+        addListener: jest.fn((event: string, listener: (...args: unknown[]) => void) => {
+          listeners[event] = listener;
+          return { remove: jest.fn(() => delete listeners[event]) };
+        }),
+        currentTime: 0,
+        loop: false,
+        muted: true,
+        pause: jest.fn(),
+        play: jest.fn(),
+        replay: jest.fn(),
+      };
+      setup?.(player);
+      players.push(player);
+      return player;
+    }, []),
+  };
+});
 
 import { BuilderQuestionStep, CompactProgress } from '@/src/components/builder/simple-steps';
+import { WelcomeCreamy } from '@/src/components/creamy/welcome-creamy';
 import { NutritionFactsPanel, NutritionSummary } from '@/src/components/nutrition';
 
 const nutrition = { calories: 325, protein: 30, carbs: 20, sugar: 12, addedSugar: 6, fat: 8, fiber: 2 };
@@ -42,5 +73,45 @@ describe('recommend-first builder', () => {
     const screen = await render(<BuilderQuestionStep stage="question-goal" answers={answers} onChange={jest.fn()} />);
     expect(screen.getByText('RECOMMENDED')).toBeTruthy();
     expect(screen.getByRole('radio', { name: 'High protein. Prioritize protein and creamy body.' })).toBeTruthy();
+  });
+});
+
+describe('welcome mascot', () => {
+  it('plays the animated welcome over the polished fallback poster', async () => {
+    const screen = await render(<WelcomeCreamy />);
+    expect(screen.getByTestId('welcome-creamy-hero')).toBeTruthy();
+    expect(screen.getByTestId('welcome-creamy-video')).toBeTruthy();
+    expect(screen.getByTestId('welcome-creamy-stage')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Creamy mascot' })).toBeTruthy();
+  });
+
+  it('starts the idle loop after the entrance player reaches the end', async () => {
+    const screen = await render(<WelcomeCreamy />);
+    const players = (jest.requireMock('expo-video') as { __players: Array<{ __emit: (event: string, payload?: unknown) => void; play: jest.Mock }> }).__players.slice(-2);
+    const [entrancePlayer, idlePlayer] = players;
+
+    expect(idlePlayer.play).not.toHaveBeenCalled();
+    await act(() => entrancePlayer.__emit('playToEnd'));
+
+    expect(idlePlayer.play).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('welcome-creamy-video')).toBeTruthy();
+  });
+
+  it('falls back to the poster when video playback fails', async () => {
+    const screen = await render(<WelcomeCreamy />);
+    const players = (jest.requireMock('expo-video') as { __players: Array<{ __emit: (event: string, payload?: unknown) => void }> }).__players.slice(-2);
+
+    await act(() => players[0].__emit('statusChange', { status: 'error' }));
+
+    expect(screen.queryByTestId('welcome-creamy-video')).toBeNull();
+    expect(screen.getByTestId('welcome-creamy-hero')).toBeTruthy();
+  });
+
+  it('shows the finished integrated mascot frame when motion is disabled', async () => {
+    const screen = await render(<WelcomeCreamy motionEnabled={false} />);
+    expect(screen.getByRole('image', { name: 'Creamy mascot' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Creamy mascot' })).toBeNull();
+    expect(screen.getByTestId('welcome-creamy-hero')).toBeTruthy();
+    expect(screen.queryByTestId('welcome-creamy-video')).toBeNull();
   });
 });

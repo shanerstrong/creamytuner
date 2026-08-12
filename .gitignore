@@ -49,3 +49,8 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Visual QA run artifacts (Figma baselines remain tracked)
+/design/figma/actual/
+/design/figma/diffs/
+/design/figma/results*.json

@@ -19,7 +19,7 @@ const destinations: { id: string; label: string; href: string; icon: IconName; a
 function activeDestination(pathname: string) {
   if (/^\/recipe(?:s|\/)/.test(pathname)) return 'recipes';
   if (/^\/ingredient(?:-new|\/)|^\/library/.test(pathname)) return 'library';
-  if (/^\/(?:settings|machines)/.test(pathname)) return 'settings';
+  if (/^\/(?:settings|preferences|machines)/.test(pathname)) return 'settings';
   if (/^\/profile/.test(pathname)) return 'profile';
   return 'home';
 }

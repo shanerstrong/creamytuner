@@ -1,8 +1,9 @@
 import { estimateVolumeMl } from '@/src/domain/nutrition';
+import { filterIngredientsForPreferences, getIngredientEligibility } from '@/src/domain/dietary';
 import type { Ingredient, Recipe, RecipeIngredient, TutorialDraft, TutorialTextureResult } from '@/src/types';
 
-export const CURRENT_ONBOARDING_VERSION = 5;
-export const TUTORIAL_STAGES = ['machine', 'dietary', 'base', 'helper', 'sweetener', 'flavor', 'blend', 'freeze', 'first-spin', 'evaluate', 'second-cycle-additions', 'second-cycle', 'final-check', 'complete'] as const;
+export const CURRENT_ONBOARDING_VERSION = 6;
+export const TUTORIAL_STAGES = ['machine', 'food-needs', 'base', 'taste', 'review', 'freeze', 'first-cycle', 'final-cycle', 'complete'] as const;
 export const TUTORIAL_STEP_COUNT = TUTORIAL_STAGES.length;
 
 export type TutorialBaseTemplate = {
@@ -18,16 +19,84 @@ export type TutorialRecommendation = {
   reason: string;
 };
 
+const helperRecommendationIds = ['jello-vanilla-zero', 'xanthan-gum', 'cottage-cheese-low-fat', 'cream-cheese', 'guar-gum', 'greek-yogurt'];
+const sweetenerRecommendationIds = ['sugar', 'brown-sugar', 'allulose', 'stevia', 'erythritol', 'monk-fruit'];
+const flavorRecommendationIds = ['strawberries', 'cocoa', 'vanilla', 'banana', 'blueberries', 'pb2-original'];
+
 export function normalizeTutorialDraft(draft: TutorialDraft): TutorialDraft {
   return {
     ...draft,
-    version: 3,
+    version: 5,
     baseItems: draft.baseItems.map((item) => ({ ...item })),
     selectedIngredientIds: [...new Set(draft.selectedIngredientIds)],
     disclosures: [...new Set(draft.disclosures)],
     dietaryPreferences: [...new Set(draft.dietaryPreferences)],
+    foodAllergies: [...new Set(draft.foodAllergies)],
+    customAvoidFoods: [...new Set(draft.customAvoidFoods.map((value) => value.trim()).filter(Boolean))],
     mixInIds: [...new Set(draft.mixInIds.length ? draft.mixInIds : draft.mixInId ? [draft.mixInId] : [])],
     correctiveIngredientIds: [...new Set(draft.correctiveIngredientIds)],
+    initializedRecommendationStages: [...new Set(draft.initializedRecommendationStages)],
+  };
+}
+
+export function initializeTutorialStageRecommendations(source: TutorialDraft, ingredients: Ingredient[], capacityMl: number, stage = source.stage): TutorialDraft {
+  const draft = normalizeTutorialDraft(source);
+  if ((stage !== 'base' && stage !== 'taste') || draft.initializedRecommendationStages.includes(stage)) return draft;
+  const eligible = filterIngredientsForPreferences(ingredients, draft.dietaryPreferences, draft.foodAllergies, draft.customAvoidFoods);
+  const eligibleIds = new Set(eligible.map((ingredient) => ingredient.id));
+  const selectedIngredientIds = [...draft.selectedIngredientIds];
+  const itemAmounts = { ...draft.itemAmounts };
+  let baseItems = draft.baseItems.map((item) => ({ ...item }));
+
+  if (stage === 'base') {
+    if (!baseItems.length) {
+      const templateIndex = draft.dietaryPreferences.includes('vegan') || draft.dietaryPreferences.includes('dairy-free') ? 2 : draft.dietaryPreferences.includes('high-protein') ? 1 : 0;
+      const template = tutorialBaseTemplates(capacityMl)[templateIndex];
+      const total = template.items.reduce((sum, item) => sum + item.amount, 0);
+      const allowed = template.items.filter((item) => eligibleIds.has(item.ingredientId));
+      const fallback = eligible.find((ingredient) => ingredient.category === 'base' && ingredient.defaultUnit === 'ml');
+      baseItems = allowed.length
+        ? allowed.map((item, index) => ({ ...item, amount: index === allowed.length - 1 ? total - allowed.slice(0, -1).reduce((sum, value) => sum + value.amount, 0) : item.amount }))
+        : fallback ? [{ ingredientId: fallback.id, amount: total, unit: 'ml' }] : [];
+    }
+    if (!helperRecommendationIds.some((id) => selectedIngredientIds.includes(id))) {
+      const plantOnly = draft.dietaryPreferences.includes('dairy-free') || draft.dietaryPreferences.includes('vegan');
+      const helperId = [plantOnly ? 'xanthan-gum' : 'jello-vanilla-zero', 'xanthan-gum', ...helperRecommendationIds].find((id) => eligibleIds.has(id));
+      const helper = helperId ? ingredients.find((ingredient) => ingredient.id === helperId) : undefined;
+      if (helper) {
+        selectedIngredientIds.push(helper.id);
+        itemAmounts[helper.id] = helper.defaultAmount;
+      }
+    }
+  }
+
+  if (stage === 'taste') {
+    if (!sweetenerRecommendationIds.some((id) => selectedIngredientIds.includes(id))) {
+      const preferred = draft.dietaryPreferences.includes('no-added-sugar') ? 'monk-fruit' : 'sugar';
+      const sweetenerId = [preferred, ...sweetenerRecommendationIds].find((id) => eligibleIds.has(id));
+      const sweetener = sweetenerId ? ingredients.find((ingredient) => ingredient.id === sweetenerId) : undefined;
+      if (sweetener) {
+        selectedIngredientIds.push(sweetener.id);
+        itemAmounts[sweetener.id] = sweetener.defaultAmount;
+      }
+    }
+    if (!flavorRecommendationIds.some((id) => selectedIngredientIds.includes(id))) {
+      const flavorId = ['strawberries', ...flavorRecommendationIds].find((id) => eligibleIds.has(id));
+      const flavor = flavorId ? ingredients.find((ingredient) => ingredient.id === flavorId) : undefined;
+      if (flavor) {
+        selectedIngredientIds.push(flavor.id);
+        itemAmounts[flavor.id] = flavor.defaultAmount;
+      }
+    }
+  }
+
+  return {
+    ...draft,
+    stage,
+    baseItems,
+    selectedIngredientIds: [...new Set(selectedIngredientIds)],
+    itemAmounts,
+    initializedRecommendationStages: [...new Set([...draft.initializedRecommendationStages, stage])],
   };
 }
 
@@ -54,7 +123,7 @@ export function tutorialRecommendation(draft: TutorialDraft, ingredients: Ingred
   const plantHeavy = baseTotal > 0 && plantTotal / baseTotal >= 0.5;
   const id = step === 'protein' ? 'whey-vanilla' : step === 'helper' ? (plantHeavy || normalized.dietaryPreferences.includes('vegan') ? 'xanthan-gum' : 'jello-vanilla-zero') : step === 'sweetener' ? (normalized.dietaryPreferences.includes('no-added-sugar') ? 'monk-fruit' : 'sugar') : 'strawberries';
   const ingredient = ingredients.find((candidate) => candidate.id === id);
-  if (!ingredient) return null;
+  if (!ingredient || !getIngredientEligibility(ingredient, normalized.dietaryPreferences, normalized.foodAllergies, normalized.customAvoidFoods).allowed) return null;
   const reason = step === 'protein'
     ? 'One measured scoop adds protein and milk solids that support a creamier texture.'
     : step === 'helper'
@@ -120,30 +189,41 @@ export function tutorialMixInItems(draft: TutorialDraft, ingredients: Ingredient
   return ids.map((id) => ingredients.find((candidate) => candidate.id === id && candidate.category === 'mix-in')).filter((ingredient): ingredient is Ingredient => Boolean(ingredient)).map((ingredient) => ({ ingredientId: ingredient.id, amount: ingredient.defaultAmount, unit: ingredient.defaultUnit }));
 }
 
-export const tutorialTextureGuidance: Record<TutorialTextureResult, { title: string; detail: string; next: string }> = {
+export function tutorialFinalProgram(draft: Pick<TutorialDraft, 'mixInIds' | 'mixInId' | 'textureResult'>): 'mix-in' | 'respin' | null {
+  if (draft.mixInIds.length || draft.mixInId) return 'mix-in';
+  if (draft.textureResult && draft.textureResult !== 'perfect') return 'respin';
+  return null;
+}
+
+export const tutorialTextureGuidance: Record<TutorialTextureResult, { title: string; detail: string; next: string; source: 'manufacturer' | 'community' | 'creamytuner' }> = {
   perfect: {
     title: 'Perfect — stop processing',
     detail: 'Scoop it now, or choose Mix-In if you want chunks folded through it.',
     next: 'Optional Mix-In',
+    source: 'creamytuner',
   },
   powdery: {
-    title: 'Add a small splash',
-    detail: 'A powdery first spin is common with very cold or lean bases. Pack it down and add one tablespoon of your base before the final cycle.',
+    title: 'Choose one final program',
+    detail: 'Use Re-Spin for a powdery result only when you are not adding chunks. If you add mix-ins, use Mix-In instead and do not run both.',
     next: 'Prepare the final cycle',
+    source: 'manufacturer',
   },
   chalky: {
-    title: 'Add moisture before the final cycle',
-    detail: 'Pack the pint down, then add one tablespoon of your base before the final cycle. For the next pint, reduce dry powder if the chalkiness returns.',
+    title: 'Pack it down before the final cycle',
+    detail: 'If it is genuinely dry, you can confirm one tablespoon of matching base. Use Re-Spin without chunks or Mix-In when adding chunks.',
     next: 'Prepare the final cycle',
+    source: 'community',
   },
   icy: {
-    title: 'Add a small splash',
-    detail: 'Pack the surface down and add one tablespoon of your base before the final cycle. Review sweetener and milk solids for the next pint.',
+    title: 'Pack it down before the final cycle',
+    detail: 'Use Re-Spin without chunks or Mix-In when adding chunks. Review sweetener and milk solids for the next pint.',
     next: 'Prepare the final cycle',
+    source: 'community',
   },
   'too-soft': {
     title: 'Freeze it longer',
     detail: 'Do not process a melting pint. Return it to the freezer until completely firm and level before the final cycle.',
     next: 'Refreeze before the final cycle',
+    source: 'manufacturer',
   },
 };

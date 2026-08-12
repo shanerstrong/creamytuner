@@ -32,6 +32,12 @@ export const nutritionSchema = z.object({
   fiber: z.number().nonnegative().default(0),
 });
 
+export const foodAllergenSchema = z.enum([
+  'milk', 'egg', 'fish', 'crustacean-shellfish', 'tree-nuts',
+  'peanuts', 'wheat', 'soy', 'sesame',
+]);
+export const allergenDataStatusSchema = z.enum(['verified', 'user-confirmed', 'incomplete']);
+
 export const ingredientSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -53,6 +59,12 @@ export const ingredientSchema = z.object({
   typicalUses: z.array(z.string()).default([]),
   substitutions: z.array(z.string()).default([]),
   cautions: z.array(z.string()).default([]),
+  allergens: z.array(foodAllergenSchema).default([]),
+  mayContainAllergens: z.array(foodAllergenSchema).default([]),
+  allergenDataStatus: allergenDataStatusSchema.default('incomplete'),
+  allergenStatement: z.string().default(''),
+  allergenSourceUrl: z.string().url().or(z.literal('')).default(''),
+  allergenVerifiedAt: z.string().default(''),
   isCustom: z.boolean().default(false),
 });
 
@@ -136,35 +148,19 @@ export const tutorialTextureResultSchema = z.enum(['perfect', 'powdery', 'icy', 
 export const dietaryPreferenceSchema = z.enum(['vegan', 'vegetarian', 'dairy-free', 'gluten-free', 'no-added-sugar', 'high-protein', 'high-carb', 'high-fiber']);
 export const tutorialStageSchema = z.enum([
   'machine',
-  'dietary',
+  'food-needs',
   'base',
-  'helper',
-  'sweetener',
-  'flavor',
-  'blend',
+  'taste',
+  'review',
   'freeze',
-  'first-spin',
-  'evaluate',
-  'second-cycle-additions',
-  'second-cycle',
-  'final-check',
+  'first-cycle',
+  'final-cycle',
   'complete',
 ]);
-const persistedTutorialStageSchema = z.union([
-  tutorialStageSchema,
-  z.literal('correction'),
-  z.literal('mix-ins'),
-  z.literal('respin'),
-]).transform((stage) => {
-  if (stage === 'correction' || stage === 'mix-ins') return 'second-cycle-additions' as const;
-  if (stage === 'respin') return 'final-check' as const;
-  return stage;
-});
-
-const tutorialDraftV3Schema = z.object({
-  version: z.literal(3).default(3),
+const tutorialDraftV4Schema = z.object({
+  version: z.literal(4),
   flowVersion: z.number().int().nonnegative().default(0),
-  stage: persistedTutorialStageSchema.default('machine'),
+  stage: tutorialStageSchema.default('machine'),
   machineId: z.string().default('nc501'),
   baseItems: z.array(recipeIngredientSchema).default([]),
   selectedIngredientIds: z.array(z.string()).default([]),
@@ -182,8 +178,41 @@ const tutorialDraftV3Schema = z.object({
   recipeId: z.string().default(''),
   recipeName: z.string().default(''),
   dietaryPreferences: z.array(dietaryPreferenceSchema).default([]),
+  foodAllergies: z.array(foodAllergenSchema).default([]),
+  customAvoidFoods: z.array(z.string().min(1)).default([]),
   disclosures: z.array(z.string()).default([]),
   freezeTimerStartedAt: z.string().nullable().default(null),
+  initializedRecommendationStages: z.array(z.enum(['base', 'taste'])).default([]),
+  firstCycleState: z.enum(['instructions', 'check']).default('instructions'),
+  finalCycleState: z.enum(['prepare', 'run', 'check']).default('prepare'),
+});
+
+const tutorialDraftV5Schema = tutorialDraftV4Schema.omit({
+  version: true,
+  spinMinutes: true,
+  firstCycleState: true,
+  finalCycleState: true,
+}).extend({
+  version: z.literal(5),
+  firstCycleState: z.enum(['ready', 'running', 'check']).default('ready'),
+  finalCycleState: z.enum(['prepare', 'ready', 'running', 'check']).default('prepare'),
+});
+
+const oldTutorialStageSchema = z.enum([
+  'machine', 'dietary', 'allergies', 'base', 'helper', 'sweetener', 'flavor', 'blend', 'freeze',
+  'first-spin', 'evaluate', 'second-cycle-additions', 'second-cycle', 'final-check', 'complete',
+  'correction', 'mix-ins', 'respin',
+]);
+
+const tutorialDraftV3Schema = tutorialDraftV4Schema.omit({
+  version: true,
+  stage: true,
+  initializedRecommendationStages: true,
+  firstCycleState: true,
+  finalCycleState: true,
+}).extend({
+  version: z.literal(3),
+  stage: oldTutorialStageSchema.default('machine'),
 });
 
 const legacyTutorialDraftSchema = z.object({
@@ -209,8 +238,43 @@ const legacyTutorialDraftSchema = z.object({
 
 const legacyTutorialStages = ['machine', 'base', 'helper', 'sweetener', 'flavor', 'blend', 'freeze', 'first-spin', 'evaluate', 'mix-ins', 'complete'] as const;
 
-export const tutorialDraftSchema = z.union([tutorialDraftV3Schema, legacyTutorialDraftSchema]).transform((draft) => {
-  if (draft.version === 3) return draft;
+const tutorialDraftInputSchema = z.preprocess((value) => {
+  if (!value || typeof value !== 'object' || 'version' in value) return value;
+  const draft = value as Record<string, unknown>;
+  const legacyKeys = ['step', 'baseAdded', 'baseId', 'baseAmountMl', 'proteinId', 'helperId', 'sweetenerId', 'flavorId'];
+  const looksLegacy = legacyKeys.some((key) => key in draft);
+  return { ...draft, version: looksLegacy ? 2 : 5 };
+}, z.union([tutorialDraftV5Schema, tutorialDraftV4Schema, tutorialDraftV3Schema, legacyTutorialDraftSchema]));
+
+export const tutorialDraftSchema = tutorialDraftInputSchema.transform((draft) => {
+  const migrateStage = (stage: z.infer<typeof oldTutorialStageSchema>) => {
+    if (stage === 'dietary' || stage === 'allergies') return 'food-needs' as const;
+    if (stage === 'helper') return 'base' as const;
+    if (stage === 'sweetener' || stage === 'flavor') return 'taste' as const;
+    if (stage === 'blend') return 'review' as const;
+    if (stage === 'first-spin' || stage === 'evaluate') return 'first-cycle' as const;
+    if (stage === 'second-cycle-additions' || stage === 'second-cycle' || stage === 'final-check' || stage === 'correction' || stage === 'mix-ins' || stage === 'respin') return 'final-cycle' as const;
+    if (stage === 'machine' || stage === 'base' || stage === 'freeze' || stage === 'complete') return stage;
+    return 'machine' as const;
+  };
+  const cycleStates = (stage: z.infer<typeof oldTutorialStageSchema>) => ({
+    firstCycleState: stage === 'evaluate' ? 'check' as const : 'ready' as const,
+    finalCycleState: stage === 'second-cycle' ? 'ready' as const : stage === 'final-check' || stage === 'respin' ? 'check' as const : 'prepare' as const,
+  });
+  if (draft.version === 5) return draft;
+  if (draft.version === 4) return tutorialDraftV5Schema.parse({
+    ...draft,
+    version: 5,
+    firstCycleState: draft.firstCycleState === 'instructions' ? 'ready' : 'check',
+    finalCycleState: draft.finalCycleState === 'run' ? 'ready' : draft.finalCycleState,
+  });
+  if (draft.version === 3) return tutorialDraftV5Schema.parse({
+    ...draft,
+    version: 5,
+    stage: migrateStage(draft.stage),
+    initializedRecommendationStages: [],
+    ...cycleStates(draft.stage),
+  });
   const baseItems = draft.baseItems.length
     ? draft.baseItems
     : draft.baseAdded
@@ -223,10 +287,11 @@ export const tutorialDraftSchema = z.union([tutorialDraftV3Schema, legacyTutoria
     draft.sweetenerId,
     draft.flavorId,
   ].filter((id): id is string => Boolean(id)))];
-  return tutorialDraftV3Schema.parse({
-    version: 3,
+  const legacyStage = legacyTutorialStages[draft.step] ?? 'machine';
+  return tutorialDraftV5Schema.parse({
+    version: 5,
     flowVersion: draft.flowVersion,
-    stage: legacyTutorialStages[draft.step] ?? 'machine',
+    stage: migrateStage(legacyStage),
     machineId: draft.machineId,
     baseItems,
     selectedIngredientIds,
@@ -236,6 +301,8 @@ export const tutorialDraftSchema = z.union([tutorialDraftV3Schema, legacyTutoria
     mixInIds: draft.mixInId ? [draft.mixInId] : [],
     textureResult: draft.textureResult,
     recipeId: draft.recipeId,
+    initializedRecommendationStages: [],
+    ...cycleStates(legacyStage),
   });
 });
 
@@ -253,10 +320,18 @@ export const userSettingsSchema = z.object({
   activeFreezeTimer: freezeTimerSchema.nullable().default(null),
   onboardingVersion: z.number().int().nonnegative().default(0),
   creamyHelperEnabled: z.boolean().default(true),
+  creamyTipsEnabled: z.boolean().default(true),
+  creamyMotionEnabled: z.boolean().default(true),
+  dismissedCreamyTipIds: z.array(z.string()).default([]),
+  profileDisplayName: z.string().trim().min(1).max(40).default('Chef'),
+  profilePhotoUri: z.string().default(''),
+  dietaryPreferences: z.array(dietaryPreferenceSchema).default([]),
+  foodAllergies: z.array(foodAllergenSchema).default([]),
+  customAvoidFoods: z.array(z.string().min(1)).default([]),
   creamyPosition: z.object({ x: z.number(), y: z.number() }).default({ x: 0, y: 0 }),
   tutorialPintVisible: z.boolean().default(true),
   tutorialDraft: tutorialDraftSchema.default({
-    version: 3,
+    version: 5,
     flowVersion: 0,
     stage: 'machine',
     machineId: 'nc501',
@@ -271,13 +346,17 @@ export const userSettingsSchema = z.object({
     secondCycleProgram: null,
     textureResult: null,
     finalTextureResult: null,
-    spinMinutes: 2,
     photoUri: '',
     recipeId: '',
     recipeName: '',
     dietaryPreferences: [],
+    foodAllergies: [],
+    customAvoidFoods: [],
     disclosures: [],
     freezeTimerStartedAt: null,
+    initializedRecommendationStages: [],
+    firstCycleState: 'ready',
+    finalCycleState: 'prepare',
   }),
 });
 
@@ -289,13 +368,17 @@ export type RecipeStyle = z.infer<typeof recipeStyleSchema>;
 type ParsedNutrition = z.infer<typeof nutritionSchema>;
 export type Nutrition = Omit<ParsedNutrition, 'addedSugar'> & { addedSugar?: number };
 type ParsedIngredient = z.infer<typeof ingredientSchema>;
-type IngredientMetadataKey = 'brand' | 'description' | 'referenceLabel' | 'sourceUrl' | 'sourceCheckedAt' | 'popularityRank' | 'tags' | 'typicalUses' | 'substitutions' | 'cautions';
+type IngredientMetadataKey = 'brand' | 'description' | 'referenceLabel' | 'sourceUrl' | 'sourceCheckedAt' | 'popularityRank' | 'tags' | 'typicalUses' | 'substitutions' | 'cautions' | 'allergens' | 'mayContainAllergens' | 'allergenDataStatus' | 'allergenStatement' | 'allergenSourceUrl' | 'allergenVerifiedAt';
 // New catalog metadata stays optional to callers; persistence fills defaults on parse.
 export type Ingredient = Omit<ParsedIngredient, IngredientMetadataKey | 'nutrition'> & Partial<Pick<ParsedIngredient, IngredientMetadataKey>> & { nutrition: Nutrition };
 export type RecipeIngredient = z.infer<typeof recipeIngredientSchema>;
 export type Recipe = z.infer<typeof recipeSchema>;
 export type UserSettings = z.infer<typeof userSettingsSchema>;
 export type DietaryPreference = z.infer<typeof dietaryPreferenceSchema>;
+export type FoodAllergen = z.infer<typeof foodAllergenSchema>;
+export type AllergenDataStatus = z.infer<typeof allergenDataStatusSchema>;
+export type IngredientEligibilityStatus = 'allowed' | 'blocked-dietary' | 'blocked-allergy' | 'label-check-required';
+export type IngredientEligibilityResult = { status: IngredientEligibilityStatus; allowed: boolean; reasons: string[] };
 export type BuilderMode = 'guided' | 'quick';
 export type GuidedBuilderDraft = NonNullable<UserSettings['guidedBuilderDraft']>;
 export type FreezeTimer = z.infer<typeof freezeTimerSchema>;

@@ -2,8 +2,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { AppHeader, GlassCard, GradientButton, Icon, LoadingScreen, Pill, Screen } from '@/src/components/ui';
+import { AppHeader, EmptyState, GlassCard, GradientButton, Icon, LoadingScreen, Pill, Screen } from '@/src/components/ui';
 import { machineById } from '@/src/data/machines';
+import { getRecipeEligibility } from '@/src/domain/dietary';
 import { useApp } from '@/src/providers/app-provider';
 import { palette, spacing } from '@/src/theme';
 
@@ -12,29 +13,41 @@ const steps = [
   ['Freeze', 'Freeze flat for at least 24 hours.', 'snowflake'],
   ['Select Program', 'Use the recommended program.', 'tune-vertical'],
   ['Spin', 'Lock the bowl and start the machine.', 'record-circle-outline'],
-  ['Evaluate', 'Check the texture before adding liquid.', 'eye-outline'],
-  ['Re-spin?', 'Use Re-Spin only if the texture needs it.', 'refresh'],
+  ['Check Texture', 'Take a quick look before changing anything.', 'eye-outline'],
 ] as const;
 
 export default function SpinAssistantScreen() {
   const params = useLocalSearchParams<{ recipeId?: string; programId?: string }>();
-  const { ready, recipes, settings, startSpinSession } = useApp();
+  const { ready, recipes, ingredients, settings, startSpinSession } = useApp();
   const recipe = recipes.find((candidate) => candidate.id === params.recipeId) ?? recipes[0];
   const machine = machineById(settings.machineId);
   const [active, setActive] = useState(0);
   const [started, setStarted] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [sessionId] = useState(() => `spin-${Date.now()}`);
+  const [startedAt, setStartedAt] = useState<string>();
   const title = recipe ? recipe.name : 'Your pint';
   const selectedProgram = machine.programs.find((program) => program.id === params.programId);
+  const conflicts = recipe ? getRecipeEligibility(recipe, ingredients, settings) : [];
 
   const next = async () => {
     if (!started) {
+      const now = new Date().toISOString();
       setStarted(true);
-      await startSpinSession({ id: `spin-${Date.now()}`, recipeId: recipe?.id, machineId: machine.id, programId: params.programId, step: 1, startedAt: new Date().toISOString() });
+      setStartedAt(now);
+      await startSpinSession({ id: sessionId, recipeId: recipe?.id, machineId: machine.id, programId: params.programId, step: 1, startedAt: now });
     }
     setActive((current) => Math.min(current + 1, steps.length - 1));
   };
 
+  const finish = async () => {
+    const now = new Date().toISOString();
+    await startSpinSession({ id: sessionId, recipeId: recipe?.id, machineId: machine.id, programId: params.programId, step: steps.length, startedAt: startedAt ?? now, completedAt: now });
+    setFinished(true);
+  };
+
   if (!ready) return <LoadingScreen />;
+  if (recipe && conflicts.length) return <Screen><AppHeader title="Spin Assistant" /><EmptyState icon="shield-alert-outline" title="Adjust this recipe first" message={`${conflicts.map((entry) => entry.ingredient.name).join(', ')} conflicts with your food settings. Spin guidance is blocked until the recipe is changed.`} action="Edit ingredients" onAction={() => router.replace(`/builder?recipeId=${recipe.id}`)} /></Screen>;
 
   return (
     <Screen>
@@ -55,10 +68,18 @@ export default function SpinAssistantScreen() {
           );
         })}
       </View>
-      {active === steps.length - 1 ? (
+      {finished ? (
+        <GlassCard style={styles.finishedCard}>
+          <View style={styles.finishedIcon}><Icon name="check" size={34} color={palette.success} /></View>
+          <Text style={styles.finishedTitle}>Nice. Your pint is ready.</Text>
+          <Text style={styles.finishedCopy}>Save it for next time or make another one when you’re ready.</Text>
+          <GradientButton title="View my recipe" icon="arrow-right" onPress={() => router.replace(recipe ? `/recipe/${recipe.id}` : '/(tabs)/home')} />
+        </GlassCard>
+      ) : active === steps.length - 1 ? (
         <GlassCard style={styles.evaluate}>
           <Text style={styles.evaluateTitle}>How did it turn out?</Text>
-          <View style={styles.textureRow}><Pill label="Perfect" onPress={() => setActive(0)} /><Pill label="Powdery" onPress={() => router.push('/troubleshoot?issue=powdery')} /><Pill label="Icy" onPress={() => router.push('/troubleshoot?issue=icy')} /></View>
+          <Text style={styles.evaluateCopy}>Choose one quick answer.</Text>
+          <View style={styles.textureRow}><Pill label="Looks perfect" onPress={() => void finish()} /><Pill label="Too powdery" onPress={() => router.push('/troubleshoot?issue=powdery')} /><Pill label="Too icy" onPress={() => router.push('/troubleshoot?issue=icy')} /></View>
         </GlassCard>
       ) : <GradientButton title={active === 2 ? 'Ready to Spin' : 'Next Step'} icon="arrow-right" onPress={next} />}
     </Screen>
@@ -80,6 +101,11 @@ const styles = StyleSheet.create({
   stepName: { color: palette.text, fontSize: 17, lineHeight: 22, fontWeight: '800' },
   stepDescription: { color: palette.textMuted, fontSize: 14, lineHeight: 19, marginTop: 2 },
   evaluate: { padding: spacing.md, gap: spacing.sm },
-  evaluateTitle: { color: palette.text, fontWeight: '800', textAlign: 'center' },
+  evaluateTitle: { color: palette.text, fontSize: 20, lineHeight: 26, fontWeight: '900', textAlign: 'center' },
+  evaluateCopy: { color: palette.textMuted, fontSize: 14, lineHeight: 19, textAlign: 'center' },
   textureRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, justifyContent: 'center' },
+  finishedCard: { padding: spacing.lg, alignItems: 'center', gap: spacing.sm },
+  finishedIcon: { width: 76, height: 76, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(104,226,164,0.14)' },
+  finishedTitle: { color: palette.text, fontSize: 24, lineHeight: 30, fontWeight: '900', textAlign: 'center' },
+  finishedCopy: { color: palette.textMuted, fontSize: 16, lineHeight: 22, textAlign: 'center', marginBottom: spacing.sm },
 });

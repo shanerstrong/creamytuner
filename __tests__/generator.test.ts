@@ -86,6 +86,13 @@ describe('guided recipe engine', () => {
     }
   });
 
+  it('blocks a recommendation when no eligible base remains', () => {
+    const withoutBases = seededIngredients.filter((ingredient) => ingredient.category !== 'base');
+    const result = recommendBeginnerRecipe({ answers: { texture: 'creamy', flavor: 'strawberry', goal: 'high-protein' }, ingredients: withoutBases, machineId: 'nc501' });
+    expect(result.blockedReason).toContain('No base ingredient');
+    expect(result.items.some((item) => withoutBases.find((ingredient) => ingredient.id === item.ingredientId)?.category === 'base')).toBe(false);
+  });
+
   it('proposes pantry substitutions without changing the current recipe', () => {
     const items = [{ ingredientId: 'milk-2', amount: 300, unit: 'ml' as const }, { ingredientId: 'whey-vanilla', amount: 25, unit: 'g' as const }];
     const original = JSON.parse(JSON.stringify(items));

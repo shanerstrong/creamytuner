@@ -5,15 +5,18 @@ import { StyleSheet, Text, View } from 'react-native';
 import { AppHeader, EmptyState, GlassCard, GradientButton, Icon, IconButton, LoadingScreen, Pill, Screen, type IconName } from '@/src/components/ui';
 import { machineById } from '@/src/data/machines';
 import { recommendProgram } from '@/src/domain/generator';
+import { getRecipeEligibility } from '@/src/domain/dietary';
 import { useApp } from '@/src/providers/app-provider';
 import { palette, radii, spacing } from '@/src/theme';
 
 export default function ProgramSelectionScreen() {
   const params = useLocalSearchParams<{ recipeId?: string }>();
-  const { ready, recipes, settings } = useApp();
+  const { ready, recipes, ingredients, settings } = useApp();
   const [recipeId, setRecipeId] = useState(params.recipeId);
   const recipe = recipes.find((candidate) => candidate.id === recipeId);
   const machine = machineById(settings.machineId);
+  const eligibleRecipes = useMemo(() => recipes.filter((candidate) => getRecipeEligibility(candidate, ingredients, settings).length === 0), [ingredients, recipes, settings]);
+  const conflicts = recipe ? getRecipeEligibility(recipe, ingredients, settings) : [];
   const recommendation = useMemo(() => recipe ? recommendProgram(recipe, machine.id) : undefined, [machine.id, recipe]);
   const [selectedProgram, setSelectedProgram] = useState<string | undefined>(undefined);
   const selected = selectedProgram ?? recommendation?.program.id;
@@ -21,17 +24,18 @@ export default function ProgramSelectionScreen() {
   useEffect(() => {
     if (!ready || recipe) return;
     const requested = recipes.find((candidate) => candidate.id === params.recipeId);
-    setRecipeId(requested?.id ?? recipes[0]?.id);
-  }, [params.recipeId, ready, recipe, recipes]);
+    setRecipeId(requested?.id ?? eligibleRecipes[0]?.id);
+  }, [eligibleRecipes, params.recipeId, ready, recipe, recipes]);
 
   if (!ready) return <LoadingScreen />;
   if (!recipe) return <Screen><AppHeader title="Which Program?" left={<IconButton icon="chevron-left" label="Go back" onPress={() => router.back()} />} /><EmptyState icon="ice-cream-off" title="Build a recipe first" message="Program guidance is based on your recipe ingredients." action="Build a Pint" onAction={() => router.replace('/builder')} /></Screen>;
+  if (conflicts.length) return <Screen><AppHeader title="Which Program?" left={<IconButton icon="chevron-left" label="Go back" onPress={() => router.back()} />} /><EmptyState icon="shield-alert-outline" title="Adjust this recipe first" message={`${conflicts.map((entry) => entry.ingredient.name).join(', ')} conflicts with your food settings. Program guidance is blocked until the ingredients are changed.`} action="Edit ingredients" onAction={() => router.replace(`/builder?recipeId=${recipe.id}`)} /></Screen>;
 
   return (
     <Screen>
       <AppHeader title="Which Program?" subtitle={`For ${machine.shortName}`} left={<IconButton icon="chevron-left" label="Go back" onPress={() => router.back()} />} />
       <Text style={styles.label}>Choose a saved recipe</Text>
-      <View style={styles.recipePills}>{recipes.slice(0, 6).map((item) => <Pill key={item.id} label={item.name} active={item.id === recipeId} onPress={() => { setRecipeId(item.id); setSelectedProgram(undefined); }} />)}</View>
+      <View style={styles.recipePills}>{eligibleRecipes.slice(0, 6).map((item) => <Pill key={item.id} label={item.name} active={item.id === recipeId} onPress={() => { setRecipeId(item.id); setSelectedProgram(undefined); }} />)}</View>
       <View style={styles.grid}>
         {machine.programs.filter((program) => program.id !== 'mix-in').map((program) => {
           const active = selected === program.id;

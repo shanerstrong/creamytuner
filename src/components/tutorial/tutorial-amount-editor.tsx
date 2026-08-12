@@ -26,7 +26,10 @@ export function TutorialAmountEditor({ item, ingredient, settings, recommendedAm
   const shownValue = (value: number, unit: DisplayUnit, usePrecise: boolean) => {
     if (usePrecise) return Number(value.toFixed(2));
     const step = displayAmountStep(unit);
-    return Number((Math.round(value / step) * step).toFixed(2));
+    const snapped = Math.round(value / step) * step;
+    // Keep an existing canonical amount authoritative. Only clean up tiny
+    // conversion noise instead of changing 1.67 cups into 1.75 cups.
+    return Number((Math.abs(snapped - value) < 0.02 ? snapped : value).toFixed(2));
   };
   const [raw, setRaw] = useState(String(shownValue(converted, activeUnit, precise)));
 
@@ -66,7 +69,7 @@ export function TutorialAmountEditor({ item, ingredient, settings, recommendedAm
     <View style={styles.editor}>
       <View style={styles.header}>
         <View style={styles.copy}><Text style={styles.name}>{ingredient.name}</Text><Text style={styles.meta}>{ingredient.subtitle}</Text></View>
-        <Pressable onPress={() => onChange(recommendedAmount, false)} accessibilityRole="button" accessibilityLabel={`Use recommended amount for ${ingredient.name}`} style={styles.recommended}><Icon name="creation" size={14} color={palette.cyan} /><Text style={styles.recommendedText}>Recommended</Text></Pressable>
+        <Pressable onPress={() => onChange(recommendedAmount, false)} accessibilityRole="button" accessibilityLabel={`Use recommended amount for ${ingredient.name}`} style={styles.recommended}><Icon name="creation" size={16} color={palette.cyan} /><Text style={styles.recommendedText}>Recommended</Text></Pressable>
         {onRemove ? <Pressable onPress={onRemove} accessibilityRole="button" accessibilityLabel={`Remove ${ingredient.name}`} style={styles.remove}><Icon name="close" size={19} color={palette.danger} /></Pressable> : null}
       </View>
       <View style={styles.entryHeader}>
@@ -92,10 +95,10 @@ export function TutorialAmountEditor({ item, ingredient, settings, recommendedAm
 const styles = StyleSheet.create({
   editor: { width: '100%', maxWidth: '100%', overflow: 'hidden', padding: spacing.xs, borderRadius: radii.md, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.panelSoft },
   header: { flexDirection: 'row', alignItems: 'center', gap: 4 }, copy: { flex: 1, minWidth: 0 }, name: { color: palette.text, fontSize: 16, lineHeight: 21, fontWeight: '900' }, meta: { color: palette.textMuted, fontSize: 13, lineHeight: 18, marginTop: 1 },
-  recommended: { width: 100, minHeight: 42, paddingHorizontal: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: radii.sm, borderWidth: 1, borderColor: 'rgba(78,217,232,0.4)', backgroundColor: 'rgba(78,217,232,0.08)' }, recommendedText: { color: palette.cyan, fontSize: 10, fontWeight: '900' }, remove: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
-  entryHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginTop: spacing.xs }, entryLabel: { color: palette.text, fontSize: 13, lineHeight: 18, fontWeight: '900', letterSpacing: 0.8 }, entryHint: { color: palette.textMuted, fontSize: 12, lineHeight: 17 },
-  precisionToggle: { flexDirection: 'row', borderRadius: radii.pill, borderWidth: 1, borderColor: palette.border, overflow: 'hidden' }, precisionOption: { minWidth: 58, minHeight: 36, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 7 }, precisionOptionActive: { backgroundColor: 'rgba(174,134,255,0.2)' }, precisionText: { color: palette.textMuted, fontSize: 12, fontWeight: '800' }, precisionTextActive: { color: palette.white },
+  recommended: { width: 112, minHeight: 44, paddingHorizontal: 5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, borderRadius: radii.sm, borderWidth: 1, borderColor: 'rgba(78,217,232,0.4)', backgroundColor: 'rgba(78,217,232,0.08)' }, recommendedText: { color: palette.cyan, fontSize: 13, lineHeight: 17, fontWeight: '900' }, remove: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  entryHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginTop: spacing.xs }, entryLabel: { color: palette.text, fontSize: 13, lineHeight: 18, fontWeight: '900', letterSpacing: 0.8 }, entryHint: { color: palette.textMuted, fontSize: 13, lineHeight: 18 },
+  precisionToggle: { flexDirection: 'row', borderRadius: radii.pill, borderWidth: 1, borderColor: palette.border, overflow: 'hidden' }, precisionOption: { minWidth: 64, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 }, precisionOptionActive: { backgroundColor: 'rgba(174,134,255,0.2)' }, precisionText: { color: palette.textMuted, fontSize: 13, lineHeight: 18, fontWeight: '800' }, precisionTextActive: { color: palette.white },
   stepper: { width: '100%', flexDirection: 'row', gap: 6, marginTop: spacing.xs }, stepButton: { width: 44, minWidth: 44, minHeight: 46, alignItems: 'center', justifyContent: 'center', borderRadius: radii.sm, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.panelRaised }, input: { flex: 1, minWidth: 0, minHeight: 46, paddingHorizontal: 5, borderRadius: radii.sm, borderWidth: 1, borderColor: palette.pink, backgroundColor: palette.ink, color: palette.text, fontSize: 20, lineHeight: 24, fontWeight: '900', textAlign: 'center' },
-  units: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: spacing.xs }, unit: { minHeight: 40, paddingHorizontal: 11, alignItems: 'center', justifyContent: 'center', borderRadius: radii.pill, borderWidth: 1, borderColor: palette.border }, unitActive: { borderColor: palette.pink, backgroundColor: 'rgba(241,78,155,0.16)' }, unitText: { color: palette.textMuted, fontSize: 13, fontWeight: '800' }, unitTextActive: { color: palette.text },
+  units: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: spacing.xs }, unit: { minHeight: 44, paddingHorizontal: 11, alignItems: 'center', justifyContent: 'center', borderRadius: radii.pill, borderWidth: 1, borderColor: palette.border }, unitActive: { borderColor: palette.pink, backgroundColor: 'rgba(241,78,155,0.16)' }, unitText: { color: palette.textMuted, fontSize: 13, fontWeight: '800' }, unitTextActive: { color: palette.text },
   kitchen: { color: palette.cyan, fontSize: 14, lineHeight: 20, fontWeight: '900', marginTop: spacing.xs }, portionNote: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.xs, padding: spacing.xs, borderRadius: radii.sm, backgroundColor: 'rgba(174,134,255,0.09)' }, portionText: { flex: 1, color: palette.lavender, fontSize: 13, lineHeight: 18, fontWeight: '700' }, caution: { color: palette.warning, fontSize: 13, lineHeight: 19, marginTop: spacing.xs },
 });

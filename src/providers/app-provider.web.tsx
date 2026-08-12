@@ -45,10 +45,11 @@ function readDemoData(): StoredDemoData {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) throw new Error('No saved demo data');
     const parsed = JSON.parse(raw) as Partial<StoredDemoData>;
+    const parsedSettings = userSettingsSchema.parse(parsed.settings);
     return {
       recipes: recipeSchema.array().parse(parsed.recipes),
       customIngredients: ingredientSchema.array().parse(parsed.customIngredients ?? []),
-      settings: userSettingsSchema.parse(parsed.settings),
+      settings: userSettingsSchema.parse({ ...parsedSettings, dietaryPreferences: parsedSettings.dietaryPreferences.length ? parsedSettings.dietaryPreferences : parsedSettings.tutorialDraft.dietaryPreferences, foodAllergies: parsedSettings.foodAllergies.length ? parsedSettings.foodAllergies : parsedSettings.tutorialDraft.foodAllergies, customAvoidFoods: parsedSettings.customAvoidFoods.length ? parsedSettings.customAvoidFoods : parsedSettings.tutorialDraft.customAvoidFoods }),
       spinSessions: Array.isArray(parsed.spinSessions) ? parsed.spinSessions : [],
     };
   } catch {

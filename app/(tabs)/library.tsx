@@ -1,9 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader, EmptyState, GlassCard, Icon, IconButton, Pill, Screen, SearchField, type IconName } from '@/src/components/ui';
 import { ingredientCategoryLabels } from '@/src/data/ingredients';
+import { getIngredientEligibility, partitionIngredientEligibility } from '@/src/domain/dietary';
 import { useApp } from '@/src/providers/app-provider';
 import { palette, radii, spacing } from '@/src/theme';
 import type { Ingredient, IngredientCategory } from '@/src/types';
@@ -41,7 +42,8 @@ export default function IngredientLibraryScreen() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'all' | IngredientCategory>(initialCategory);
   const [sort, setSort] = useState<SortId>('popular');
-  const filtered = useMemo(() => ingredients.filter((ingredient) => {
+  const eligibility = useMemo(() => partitionIngredientEligibility(ingredients, settings), [ingredients, settings]);
+  const filtered = useMemo(() => eligibility.allowed.filter((ingredient) => {
     const needle = query.trim().toLowerCase();
     return (category === 'all' || ingredient.category === category) && (!needle || `${ingredient.name} ${ingredient.subtitle} ${ingredient.brand ?? ''} ${(ingredient.tags ?? []).join(' ')}`.toLowerCase().includes(needle));
   }).sort((a, b) => {
@@ -50,12 +52,22 @@ export default function IngredientLibraryScreen() {
     if (sort === 'protein') return (b.nutrition.protein / b.referenceAmount) - (a.nutrition.protein / a.referenceAmount);
     if (sort === 'calories') return (a.nutrition.calories / a.referenceAmount) - (b.nutrition.calories / b.referenceAmount);
     return (a.popularityRank ?? 999) - (b.popularityRank ?? 999);
-  }), [category, ingredients, query, sort]);
+  }), [category, eligibility.allowed, query, sort]);
+  const labelCheck = useMemo(() => eligibility.labelCheck.filter((ingredient) => {
+    const needle = query.trim().toLowerCase();
+    return (category === 'all' || ingredient.category === category) && (!needle || `${ingredient.name} ${ingredient.subtitle} ${ingredient.brand ?? ''}`.toLowerCase().includes(needle));
+  }), [category, eligibility.labelCheck, query]);
   const custom = filtered.filter((item) => item.isCustom);
   const bundled = filtered.filter((item) => !item.isCustom);
   const grid = settings.ingredientLibraryView === 'grid';
 
-  const selectIngredient = async (ingredient: Ingredient) => {
+  const selectIngredient = async (ingredient: Ingredient, acknowledged = false) => {
+    const result = getIngredientEligibility(ingredient, settings.dietaryPreferences, settings.foodAllergies, settings.customAvoidFoods);
+    if (result.status === 'blocked-allergy' || result.status === 'blocked-dietary') return;
+    if (result.status === 'label-check-required' && tutorialPicker && !acknowledged) {
+      Alert.alert('Check the current label', result.reasons[0], [{ text: 'Cancel', style: 'cancel' }, { text: 'I checked the label', onPress: () => { void selectIngredient(ingredient, true); } }]);
+      return;
+    }
     if (!tutorialPicker) {
       router.push(`/ingredient/${ingredient.id}` as never);
       return;
@@ -66,7 +78,7 @@ export default function IngredientLibraryScreen() {
         ? draft.baseItems
         : [...draft.baseItems, { ingredientId: ingredient.id, amount: ingredient.defaultAmount, unit: ingredient.defaultUnit }];
       await updateSettings({ tutorialDraft: { ...draft, baseItems } });
-    } else if (draft.stage === 'second-cycle-additions' && ingredient.category === 'mix-in') {
+    } else if (draft.stage === 'final-cycle' && draft.finalCycleState === 'prepare' && ingredient.category === 'mix-in') {
       const mixInIds = [...new Set([...draft.mixInIds, ingredient.id])];
       await updateSettings({ tutorialDraft: { ...draft, mixInId: mixInIds[0] ?? null, mixInIds } });
     } else {
@@ -82,7 +94,11 @@ export default function IngredientLibraryScreen() {
         title={tutorialPicker ? 'Add an ingredient' : 'Ingredient Library'}
         subtitle={tutorialPicker ? 'Tap one to add it to this pint' : `${ingredients.length} offline references`}
         left={tutorialPicker ? <IconButton icon="close" label="Return to tutorial" onPress={() => router.replace('/tutorial?resume=1')} /> : undefined}
-        right={<IconButton icon="plus" label="Add custom ingredient" onPress={() => router.push({ pathname: '/ingredient-new', params: tutorialPicker ? { tutorial: '1', category } : {} })} />}
+        right={<IconButton
+          icon="plus"
+          label="Add new ingredient"
+          onPress={() => router.push({ pathname: '/ingredient-new', params: tutorialPicker ? { tutorial: '1', category } : {} })}
+        />}
       />
       <SearchField value={query} onChangeText={setQuery} />
       <View style={styles.filterSection}>
@@ -105,6 +121,7 @@ export default function IngredientLibraryScreen() {
       {!filtered.length ? <EmptyState icon="magnify-close" title="No ingredients found" message="Try another search or clear a category filter." action="Clear filters" onAction={() => { setQuery(''); setCategory('all'); }} /> : null}
       {custom.length ? <><Text style={styles.groupTitle}>My ingredients</Text><View style={[styles.list, grid && styles.grid]}>{custom.map((item) => <IngredientItem key={item.id} ingredient={item} grid={grid} onPress={() => void selectIngredient(item)} />)}</View></> : null}
       {bundled.length ? <><Text style={styles.groupTitle}>{custom.length ? 'Creamy Tuner library' : 'Ingredients'}</Text><View style={[styles.list, grid && styles.grid]}>{bundled.map((item) => <IngredientItem key={item.id} ingredient={item} grid={grid} onPress={() => void selectIngredient(item)} />)}</View></> : null}
+      {labelCheck.length ? <><Text style={styles.groupTitle}>Check the label</Text><Text style={styles.labelCheckCopy}>These products have incomplete allergen information and are never recommended while an allergy filter is active.</Text><View style={[styles.list, grid && styles.grid]}>{labelCheck.map((item) => <IngredientItem key={item.id} ingredient={item} grid={grid} onPress={() => void selectIngredient(item)} />)}</View></> : null}
       <Text style={styles.disclaimer}>Nutrition is informational and may change. For branded foods, compare the saved reference with the current package label.</Text>
     </Screen>
   );
@@ -136,5 +153,6 @@ const styles = StyleSheet.create({
   custom: { color: palette.cyan, fontSize: 13, lineHeight: 18, fontWeight: '900', letterSpacing: 0.4 },
   meta: { color: palette.textMuted, fontSize: 14, lineHeight: 20, marginTop: 2 },
   benefit: { color: palette.warning, fontSize: 13, lineHeight: 19, marginTop: 4 },
+  labelCheckCopy: { color: palette.warning, fontSize: 13, lineHeight: 19, marginBottom: spacing.xs },
   disclaimer: { color: palette.textMuted, fontSize: 13, lineHeight: 19, marginTop: spacing.lg },
 });

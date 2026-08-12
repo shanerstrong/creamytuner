@@ -7,14 +7,17 @@ import { FreezeTimerCard } from '@/src/components/freeze-timer-card';
 import { pintSpinFrames, recipeImages } from '@/src/assets';
 import { machineById } from '@/src/data/machines';
 import { CURRENT_ONBOARDING_VERSION } from '@/src/domain/tutorial';
+import { getRecipeEligibility } from '@/src/domain/dietary';
 import { useApp } from '@/src/providers/app-provider';
 import { palette, radii, spacing } from '@/src/theme';
 import { tutorialDraftSchema } from '@/src/types';
 
 export default function HomeScreen() {
-  const { recipes, settings, toggleFavorite, updateSettings } = useApp();
+  const { recipes, ingredients, settings, toggleFavorite, updateSettings } = useApp();
   const machine = machineById(settings.machineId);
   const recent = recipes.slice(0, 2);
+  const timerRecipe = recipes.find((recipe) => recipe.id === settings.activeFreezeTimer?.recipeId);
+  const timerConflicts = timerRecipe ? getRecipeEligibility(timerRecipe, ingredients, settings) : [];
   return (
     <Screen>
       <View style={styles.topbar}>
@@ -26,13 +29,13 @@ export default function HomeScreen() {
         <View style={styles.heroRow}><PintHero image={recipeImages.strawberry} frames={pintSpinFrames} label="Strawberry pint" size={142} /><View style={styles.heroCopyWrap}><Text style={styles.eyebrow}>YOUR EASIEST PINT YET</Text><Text style={styles.heroTitle}>{settings.firstPintCompleted ? 'Build your next pint' : 'Build your first pint'}</Text><Text style={styles.heroCopy}>Choose what sounds good. Creamy Tuner builds the recipe and guides every step.</Text></View></View>
         <GradientButton title="Build my pint" icon="arrow-right" onPress={() => router.push('/builder')} />
         {settings.firstPintCompleted ? <View style={styles.replayButton}><GradientButton title="Replay first-pint tutorial" icon="school-outline" variant="secondary" onPress={() => {
-          const tutorialDraft = tutorialDraftSchema.parse({ machineId: settings.machineId, flowVersion: CURRENT_ONBOARDING_VERSION });
+          const tutorialDraft = tutorialDraftSchema.parse({ machineId: settings.machineId, flowVersion: CURRENT_ONBOARDING_VERSION, dietaryPreferences: settings.dietaryPreferences, foodAllergies: settings.foodAllergies, customAvoidFoods: settings.customAvoidFoods });
           void updateSettings({ onboarded: false, onboardingVersion: CURRENT_ONBOARDING_VERSION - 1, tutorialDraft }).then(() => router.replace('/'));
         }} /></View> : null}
         {settings.guidedBuilderDraft ? <GlassCard style={styles.resumeCard} onPress={() => router.push('/builder?resume=1')} accessibilityLabel={`Resume ${draftSummary(settings.guidedBuilderDraft)}`}><Icon name="history" color={palette.cyan} /><View style={styles.resumeCopy}><Text style={styles.resumeTitle}>Continue where you left off</Text><Text style={styles.resumeDetail}>{draftSummary(settings.guidedBuilderDraft)}</Text></View></GlassCard> : null}
       </View>
 
-      {settings.activeFreezeTimer ? <><SectionTitle title="Your freezing pint" /><FreezeTimerCard timer={settings.activeFreezeTimer} onPress={() => router.push(`/freeze-timer?recipeId=${settings.activeFreezeTimer?.recipeId}`)} /></> : null}
+      {settings.activeFreezeTimer ? <><SectionTitle title="Your freezing pint" />{timerConflicts.length ? <GlassCard style={styles.timerWarning} onPress={() => router.push(`/recipe/${settings.activeFreezeTimer?.recipeId}`)} accessibilityLabel="Review recipe allergy conflict"><Icon name="shield-alert-outline" color={palette.danger} /><View style={styles.toolCopy}><Text style={styles.toolTitle}>Review ingredients</Text><Text style={styles.toolDetail}>This freezing recipe conflicts with your current food settings.</Text></View></GlassCard> : <FreezeTimerCard timer={settings.activeFreezeTimer} onPress={() => router.push(`/freeze-timer?recipeId=${settings.activeFreezeTimer?.recipeId}`)} />}</> : null}
 
       <GlassCard style={styles.machineBanner} onPress={() => router.push('/machines')} accessibilityLabel="Change selected machine">
         <View><Text style={styles.machineLabel}>YOUR MACHINE</Text><Text style={styles.machineName}>{machine.name}</Text></View>
@@ -49,7 +52,7 @@ export default function HomeScreen() {
 
       <SectionTitle title="Recent recipes" action="View all" onAction={() => router.push('/(tabs)/recipes')} />
       <View style={styles.recipeRow}>
-        {recent.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} onPress={() => router.push(`/recipe/${recipe.id}`)} onFavorite={() => toggleFavorite(recipe.id)} />)}
+        {recent.map((recipe) => { const conflicts = getRecipeEligibility(recipe, ingredients, settings); return <View key={recipe.id} style={styles.recipeWrap}><RecipeCard recipe={recipe} wide onPress={() => router.push(`/recipe/${recipe.id}`)} onFavorite={() => toggleFavorite(recipe.id)} />{conflicts.length ? <View style={styles.recipeWarning}><Text style={styles.recipeWarningText}>ALLERGY CHECK</Text></View> : null}</View>; })}
       </View>
     </Screen>
   );
@@ -68,6 +71,7 @@ function ToolRow({ icon, title, detail, onPress }: { icon: 'tune-vertical' | 'sn
 const styles = StyleSheet.create({
   topbar: { minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   machineBanner: { padding: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.md, marginBottom: spacing.md },
+  timerWarning: { minHeight: 68, padding: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderColor: palette.danger },
   machineLabel: { color: palette.lavender, fontSize: 13, fontWeight: '900', letterSpacing: 0.8 },
   machineName: { color: palette.text, fontSize: 16, lineHeight: 21, fontWeight: '700', marginTop: 3 },
   change: { color: palette.pink, fontSize: 15, fontWeight: '800' },
@@ -87,4 +91,7 @@ const styles = StyleSheet.create({
   toolTitle: { color: palette.text, fontSize: 16, lineHeight: 21, fontWeight: '800' },
   toolDetail: { color: palette.textMuted, fontSize: 14, lineHeight: 19, marginTop: 2 },
   recipeRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: spacing.sm },
+  recipeWrap: { width: '48%', position: 'relative' },
+  recipeWarning: { position: 'absolute', left: 6, top: 6, borderRadius: radii.pill, backgroundColor: palette.danger, paddingHorizontal: 7, paddingVertical: 4 },
+  recipeWarningText: { color: palette.white, fontSize: 10, lineHeight: 13, fontWeight: '900', letterSpacing: 0.4 },
 });

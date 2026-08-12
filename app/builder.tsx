@@ -6,6 +6,7 @@ import { CollapsedAdjustStep, CompactProgress, BuilderQuestionStep, OptionalPant
 import { ReviewStep } from '@/src/components/builder/steps';
 import { AppHeader, GradientButton, Icon, IconButton, LoadingScreen, Screen } from '@/src/components/ui';
 import { calculateNutrition } from '@/src/domain/nutrition';
+import { filterIngredientsForPreferences, getIngredientEligibility } from '@/src/domain/dietary';
 import { machineById } from '@/src/data/machines';
 import { generateRecipe, getPantrySubstitutionProposals, getRecipeFixOptions, recommendBeginnerRecipe, recommendProgram, validateRecipe, type RecipeFixOption } from '@/src/domain/generator';
 import { useApp } from '@/src/providers/app-provider';
@@ -35,7 +36,12 @@ export default function BuilderScreen() {
   const [adjustmentIssue, setAdjustmentIssue] = useState('');
   const [appliedFix, setAppliedFix] = useState('');
 
-  const recommendation = useMemo(() => recommendBeginnerRecipe({ answers, ingredients, machineId: settings.machineId }), [answers, ingredients, settings.machineId]);
+  const eligibleIngredients = useMemo(() => filterIngredientsForPreferences(ingredients, settings.dietaryPreferences, settings.foodAllergies, settings.customAvoidFoods), [ingredients, settings.customAvoidFoods, settings.dietaryPreferences, settings.foodAllergies]);
+  const eligibleIds = useMemo(() => new Set(eligibleIngredients.map((ingredient) => ingredient.id)), [eligibleIngredients]);
+  const editorIngredients = useMemo(() => ingredients.filter((ingredient) => eligibleIds.has(ingredient.id) || items.some((item) => item.ingredientId === ingredient.id)), [eligibleIds, ingredients, items]);
+  const ingredientConflicts = useMemo(() => items.map((item) => ingredients.find((ingredient) => ingredient.id === item.ingredientId)).filter((ingredient): ingredient is NonNullable<typeof ingredient> => Boolean(ingredient)).map((ingredient) => ({ ingredient, result: getIngredientEligibility(ingredient, settings.dietaryPreferences, settings.foodAllergies, settings.customAvoidFoods) })).filter((entry) => !entry.result.allowed), [ingredients, items, settings.customAvoidFoods, settings.dietaryPreferences, settings.foodAllergies]);
+
+  const recommendation = useMemo(() => recommendBeginnerRecipe({ answers, ingredients: eligibleIngredients, machineId: settings.machineId }), [answers, eligibleIngredients, settings.machineId]);
   const nutrition = useMemo(() => calculateNutrition(items, ingredients), [ingredients, items]);
   const rawValidation = useMemo(() => validateRecipe(items, ingredients, settings.machineId), [ingredients, items, settings.machineId]);
   const validation = useMemo(() => ({
@@ -45,8 +51,8 @@ export default function BuilderScreen() {
   }), [rawValidation]);
   const recipeStyle = source?.style ?? recommendation.style;
   const program = useMemo(() => recommendProgram({ style: recipeStyle, nutrition, ingredients: items }, settings.machineId), [items, nutrition, recipeStyle, settings.machineId]);
-  const fixOptions = useMemo(() => getRecipeFixOptions(items, ingredients, settings.machineId, rawValidation), [ingredients, items, rawValidation, settings.machineId]);
-  const proposals = useMemo(() => getPantrySubstitutionProposals(items, pantryIds, ingredients), [ingredients, items, pantryIds]);
+  const fixOptions = useMemo(() => getRecipeFixOptions(items, eligibleIngredients, settings.machineId, rawValidation), [eligibleIngredients, items, rawValidation, settings.machineId]);
+  const proposals = useMemo(() => getPantrySubstitutionProposals(items, pantryIds, eligibleIngredients), [eligibleIngredients, items, pantryIds]);
   const highlightedIds = useMemo(() => {
     if (!adjustmentIssue) return new Set<string>();
     return new Set(items.filter((item) => { const ingredient = ingredients.find((candidate) => candidate.id === item.ingredientId); if (!ingredient) return false; return /fill|container/i.test(adjustmentIssue) ? ingredient.category === 'base' || item.amount >= 100 : /hard|sweet/i.test(adjustmentIssue) ? ingredient.category === 'sweetener' : ingredient.category === 'stabilizer'; }).map((item) => item.ingredientId));
@@ -96,6 +102,7 @@ export default function BuilderScreen() {
   };
   const applyFix = (option: RecipeFixOption) => { setItems(option.nextItems); setAppliedFix(`${option.label} applied. Review the updated recipe below.`); };
   const submit = async () => {
+    if (ingredientConflicts.length) return;
     const selected = new Set(items.map((item) => item.ingredientId));
     const imageKey: Recipe['imageKey'] = selected.has('cocoa') ? 'chocolate' : selected.has('peppermint') ? 'mint' : selected.has('cookie-pieces') ? 'cookies' : 'strawberry';
     const recipe = generateRecipe({ name, style: recipeStyle, items, ingredients, existingId: source?.id, imageKey: source?.imageKey ?? imageKey, photoUri: source?.photoUri, favorite: source?.favorite });
@@ -116,15 +123,17 @@ export default function BuilderScreen() {
   const continueQuestion = () => stage === 'question-texture' ? setStage('question-flavor') : stage === 'question-flavor' ? setStage('question-goal') : buildRecommendation();
   if (!ready) return <LoadingScreen />;
 
-  const footer = questionStages.has(stage) || stage === 'customize' || stage === 'review' ? <View style={styles.footer}><Pressable onPress={back} style={styles.backButton} accessibilityRole="button"><Icon name="arrow-left" color={palette.textMuted} /><Text style={styles.backText}>Back</Text></Pressable><GradientButton title={questionStages.has(stage) ? stage === 'question-goal' ? 'Build my recipe' : 'Continue' : stage === 'customize' ? 'Review my pint' : source ? 'Save changes' : 'Save recipe'} icon="arrow-right" disabled={((stage === 'customize' || stage === 'review') && items.length === 0) || (stage === 'review' && validation.errors.length > 0)} onPress={() => questionStages.has(stage) ? continueQuestion() : stage === 'customize' ? setStage('review') : void submit()} /></View> : null;
+  const footer = questionStages.has(stage) || stage === 'customize' || stage === 'review' ? <View style={styles.footer}><Pressable onPress={back} style={styles.backButton} accessibilityRole="button"><Icon name="arrow-left" color={palette.textMuted} /><Text style={styles.backText}>Back</Text></Pressable><GradientButton title={questionStages.has(stage) ? stage === 'question-goal' ? 'Build my recipe' : 'Continue' : stage === 'customize' ? 'Review my pint' : source ? 'Save changes' : 'Save recipe'} icon="arrow-right" disabled={((stage === 'customize' || stage === 'review') && items.length === 0) || ingredientConflicts.length > 0 || (stage === 'review' && validation.errors.length > 0)} onPress={() => questionStages.has(stage) ? continueQuestion() : stage === 'customize' ? setStage('review') : void submit()} /></View> : null;
 
   return <Screen resetKey={stage} footer={footer} contentStyle={styles.screenContent}>
     <AppHeader title={source ? 'Edit recipe' : stage === 'recommendation' ? 'Your recipe' : stage === 'customize' ? 'Customize' : stage === 'review' ? 'Review' : 'Build my pint'} left={<IconButton icon="chevron-left" label="Go back" onPress={back} />} />
     <CompactProgress stage={stage} />
     <Animated.View style={{ opacity: fade, transform: [{ translateX: slide }] }}>
       {questionStages.has(stage) ? <BuilderQuestionStep stage={stage} answers={answers} onChange={setAnswers} showGuidance={settings.tutorialMode} /> : null}
-      {stage === 'recommendation' ? <RecommendationResult name={name} expectedTexture={recommendation.expectedTexture} rationale={recommendation.rationale} nutrition={nutrition} validation={validation} program={program} capacityMl={machine.capacityMl} tutorialMode={settings.tutorialMode} onUse={() => setStage('review')} onCustomize={() => setStage('customize')} pantryOpen={pantryOpen} onTogglePantry={() => setPantryOpen((current) => !current)}>{<OptionalPantry ingredients={ingredients} selectedIds={pantryIds} proposals={proposals} onToggle={(id) => setPantryIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} onApply={applyProposals} />}</RecommendationResult> : null}
-      {stage === 'customize' ? <CollapsedAdjustStep name={name} onNameChange={setName} items={items} ingredients={ingredients} settings={settings} issue={adjustmentIssue} highlightedIds={highlightedIds} recommendedAmounts={recommendedAmounts} estimatedVolumeMl={rawValidation.estimatedVolumeMl} capacityMl={machine.capacityMl} onItemsChange={(next) => { setItems(next); setAppliedFix(''); }} onMeasurementModeChange={(measurementMode) => void updateSettings({ measurementMode })} onUnitSystemChange={(units) => void updateSettings({ units })} /> : null}
+      {stage === 'recommendation' && recommendation.blockedReason ? <View style={styles.noSafeBase}><Icon name="shield-alert-outline" color={palette.danger} size={32} /><Text style={styles.noSafeBaseTitle}>A complete recipe cannot be built yet</Text><Text style={styles.noSafeBaseText}>{recommendation.blockedReason}</Text><GradientButton title="Review food settings" icon="arrow-right" onPress={() => router.push('/settings')} /></View> : null}
+      {stage === 'recommendation' && !recommendation.blockedReason ? <RecommendationResult name={name} expectedTexture={recommendation.expectedTexture} rationale={recommendation.rationale} nutrition={nutrition} validation={validation} program={program} capacityMl={machine.capacityMl} tutorialMode={settings.tutorialMode} onUse={() => setStage('review')} onCustomize={() => setStage('customize')} pantryOpen={pantryOpen} onTogglePantry={() => setPantryOpen((current) => !current)}>{<OptionalPantry ingredients={eligibleIngredients} selectedIds={pantryIds} proposals={proposals} onToggle={(id) => setPantryIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} onApply={applyProposals} />}</RecommendationResult> : null}
+      {ingredientConflicts.length ? <View style={styles.allergyBlock}><Icon name="shield-alert-outline" color={palette.danger} /><View style={styles.conflictCopy}><Text style={styles.conflictTitle}>Adjust restricted ingredients</Text><Text style={styles.conflictText}>{ingredientConflicts.map((entry) => entry.ingredient.name).join(', ')} cannot be used with your current food settings.</Text></View></View> : null}
+      {stage === 'customize' ? <CollapsedAdjustStep name={name} onNameChange={setName} items={items} ingredients={editorIngredients} eligibleIngredientIds={eligibleIds} settings={settings} issue={adjustmentIssue} highlightedIds={highlightedIds} recommendedAmounts={recommendedAmounts} estimatedVolumeMl={rawValidation.estimatedVolumeMl} capacityMl={machine.capacityMl} onItemsChange={(next) => { setItems(next); setAppliedFix(''); }} onMeasurementModeChange={(measurementMode) => void updateSettings({ measurementMode })} onUnitSystemChange={(units) => void updateSettings({ units })} /> : null}
       {stage === 'review' ? <ReviewStep nutrition={nutrition} validation={validation} program={program} items={items} ingredients={ingredients} settings={settings} capacityMl={machine.capacityMl} fixOptions={fixOptions} appliedFix={appliedFix} onAdjustIssue={(issue) => { setAdjustmentIssue(issue); setAppliedFix(''); setStage('customize'); }} onApplyFix={applyFix} /> : null}
     </Animated.View>
     {stage === 'review' && validation.errors.length ? <Text style={styles.blocked}>Choose “Fit this container” before saving.</Text> : null}
@@ -139,4 +148,11 @@ const styles = StyleSheet.create({
   backText: { color: palette.textMuted, fontSize: 16, fontWeight: '900' },
   blocked: { color: palette.danger, fontSize: 14, lineHeight: 20, fontWeight: '800', textAlign: 'center', marginTop: spacing.sm },
   legal: { color: palette.textFaint, fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: spacing.lg },
+  allergyBlock: { minHeight: 64, borderWidth: 1, borderColor: palette.danger, borderRadius: 14, backgroundColor: 'rgba(255,107,131,0.09)', flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, marginBottom: spacing.sm },
+  noSafeBase: { alignItems: 'center', gap: spacing.sm, borderWidth: 1, borderColor: palette.danger, borderRadius: 18, backgroundColor: 'rgba(255,107,131,0.09)', padding: spacing.lg },
+  noSafeBaseTitle: { color: palette.text, fontSize: 22, lineHeight: 28, fontWeight: '900', textAlign: 'center' },
+  noSafeBaseText: { color: palette.textMuted, fontSize: 16, lineHeight: 23, textAlign: 'center', marginBottom: spacing.xs },
+  conflictCopy: { flex: 1 },
+  conflictTitle: { color: palette.text, fontSize: 16, lineHeight: 21, fontWeight: '900' },
+  conflictText: { color: palette.textMuted, fontSize: 14, lineHeight: 19, marginTop: 2 },
 });

@@ -7,13 +7,14 @@ import { recipeImages } from '@/src/assets';
 import { FreezeTimerCard } from '@/src/components/freeze-timer-card';
 import { AppHeader, GlassCard, GradientButton, Icon, IconButton, LoadingScreen, Screen } from '@/src/components/ui';
 import { createFreezeTimer, isFreezeTimerReady } from '@/src/domain/freeze-timer';
+import { getRecipeEligibility } from '@/src/domain/dietary';
 import { useApp } from '@/src/providers/app-provider';
 import { cancelFreezeReminder, scheduleFreezeReminder } from '@/src/services/freeze-reminder';
 import { palette, radii, spacing } from '@/src/theme';
 
 export default function FreezeTimerScreen() {
   const params = useLocalSearchParams<{ recipeId?: string; justBuilt?: string }>();
-  const { ready, recipes, settings, updateSettings } = useApp();
+  const { ready, recipes, ingredients, settings, updateSettings } = useApp();
   const recipe = recipes.find((candidate) => candidate.id === params.recipeId);
   const activeTimer = settings.activeFreezeTimer?.recipeId === recipe?.id ? settings.activeFreezeTimer : null;
   const [message, setMessage] = useState('');
@@ -25,9 +26,11 @@ export default function FreezeTimerScreen() {
     return () => clearInterval(interval);
   }, [activeTimer]);
   const readyToSpin = useMemo(() => activeTimer ? isFreezeTimerReady(activeTimer, now) : false, [activeTimer, now]);
+  const conflicts = recipe ? getRecipeEligibility(recipe, ingredients, settings) : [];
 
   if (!ready) return <LoadingScreen />;
   if (!recipe) return <Screen><AppHeader title="Freeze timer" left={<IconButton icon="chevron-left" label="Go back" onPress={() => router.back()} />} /><GlassCard style={styles.missing}><Text style={styles.missingTitle}>Recipe not found</Text><GradientButton title="Go home" onPress={() => router.replace('/(tabs)/home')} /></GlassCard></Screen>;
+  if (conflicts.length) return <Screen><AppHeader title="Freeze timer" left={<IconButton icon="chevron-left" label="Go back" onPress={() => router.back()} />} /><GlassCard style={styles.missing}><Icon name="shield-alert-outline" color={palette.danger} size={30} /><Text style={styles.missingTitle}>Adjust this recipe first</Text><Text style={styles.blockedText}>{conflicts.map((entry) => entry.ingredient.name).join(', ')} conflicts with your food settings. Timer and processing guidance are blocked until the ingredients are changed.</Text><GradientButton title="Edit ingredients" onPress={() => router.replace(`/builder?recipeId=${recipe.id}`)} /></GlassCard></Screen>;
 
   const startTimer = async () => {
     setStarting(true);
@@ -100,4 +103,5 @@ const styles = StyleSheet.create({
   tutorial: { padding: spacing.sm, flexDirection: 'row', gap: spacing.sm, borderColor: 'rgba(174,134,255,0.4)' }, tutorialIcon: { width: 48, height: 48, borderRadius: 16, backgroundColor: 'rgba(174,134,255,0.13)', alignItems: 'center', justifyContent: 'center' }, tutorialCopy: { flex: 1 }, tutorialBadge: { color: palette.lavender, fontSize: 13, lineHeight: 18, fontWeight: '900' }, tutorialText: { color: palette.text, fontSize: 15, lineHeight: 22, marginTop: 2 },
   steps: { paddingHorizontal: spacing.md }, step: { minHeight: 88, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm }, stepBorder: { borderBottomWidth: 1, borderBottomColor: palette.border }, stepNumber: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.pink }, stepNumberText: { color: palette.white, fontSize: 17, fontWeight: '900' }, stepIcon: { width: 44, alignItems: 'center' }, stepCopy: { flex: 1 }, stepTitle: { color: palette.text, fontSize: 17, lineHeight: 22, fontWeight: '900' }, stepDetail: { color: palette.textMuted, fontSize: 14, lineHeight: 20, marginTop: 2 },
   message: { color: palette.cyan, fontSize: 15, lineHeight: 21, fontWeight: '800', textAlign: 'center', paddingHorizontal: spacing.md }, disclaimer: { color: palette.textFaint, fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: spacing.sm }, missing: { padding: spacing.lg, gap: spacing.md }, missingTitle: { color: palette.text, fontSize: 22, fontWeight: '900' },
+  blockedText: { color: palette.textMuted, fontSize: 15, lineHeight: 22 },
 });

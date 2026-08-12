@@ -1,0 +1,66 @@
+{
+  "figmaFileKey": "tw9eZunEUfHO0HvFjqLqH9",
+  "codeConnectStatus": "deferred-until-figma-organization-or-enterprise-plan",
+  "components": [
+    {
+      "figmaName": "GradientButton",
+      "figmaNodeId": "15:2",
+      "source": "src/components/ui.tsx",
+      "export": "GradientButton"
+    },
+    {
+      "figmaName": "IconButton",
+      "figmaNodeId": "19:16",
+      "source": "src/components/ui.tsx",
+      "export": "IconButton"
+    },
+    {
+      "figmaName": "Pill",
+      "figmaNodeId": "21:19",
+      "source": "src/components/ui.tsx",
+      "export": "Pill"
+    },
+    {
+      "figmaName": "GlassCard",
+      "figmaNodeId": "25:49",
+      "source": "src/components/ui.tsx",
+      "export": "GlassCard"
+    },
+    {
+      "figmaName": "SearchField",
+      "figmaNodeId": "28:55",
+      "source": "src/components/ui.tsx",
+      "export": "SearchField"
+    },
+    {
+      "figmaName": "AppHeader",
+      "figmaNodeId": "30:59",
+      "source": "src/components/ui.tsx",
+      "export": "AppHeader"
+    },
+    {
+      "figmaName": "SectionTitle",
+      "figmaNodeId": "31:41",
+      "source": "src/components/ui.tsx",
+      "export": "SectionTitle"
+    },
+    {
+      "figmaName": "ActionCard",
+      "figmaNodeId": "34:62",
+      "source": "src/components/ui.tsx",
+      "export": "ActionCard"
+    },
+    {
+      "figmaName": "RecipeCard",
+      "figmaNodeId": "43:59",
+      "source": "src/components/ui.tsx",
+      "export": "RecipeCard"
+    },
+    {
+      "figmaName": "BottomNavigation",
+      "figmaNodeId": "45:337",
+      "source": "src/components/persistent-bottom-nav.tsx",
+      "export": "PersistentBottomNav"
+    }
+  ]
+}

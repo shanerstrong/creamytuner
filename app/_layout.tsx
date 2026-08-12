@@ -30,6 +30,7 @@ export default function RootLayout() {
               <Stack.Screen name="program" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="troubleshoot" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="settings" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen name="preferences" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="ingredient-new" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
               <Stack.Screen name="ingredient/[id]" options={{ animation: 'slide_from_right' }} />
               <Stack.Screen name="recipe/[id]" options={{ animation: 'slide_from_right' }} />

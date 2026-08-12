@@ -45,7 +45,7 @@ export default function SettingsScreen() {
     await updateSettings({
       onboarded: false,
       onboardingVersion: CURRENT_ONBOARDING_VERSION - 1,
-      tutorialDraft: tutorialDraftSchema.parse({ machineId: settings.machineId, flowVersion: CURRENT_ONBOARDING_VERSION }),
+      tutorialDraft: tutorialDraftSchema.parse({ machineId: settings.machineId, flowVersion: CURRENT_ONBOARDING_VERSION, dietaryPreferences: settings.dietaryPreferences, foodAllergies: settings.foodAllergies, customAvoidFoods: settings.customAvoidFoods }),
     });
     router.replace('/');
   };
@@ -55,10 +55,21 @@ export default function SettingsScreen() {
       <View style={styles.list}>
         <SettingRow icon="play-circle-outline" title="Replay first-pint tutorial" value="Walk through every step again" onPress={() => { void replayTutorial(); }} />
         <SettingRow icon="tune-vertical" title="Advanced builder" value="Start with full ingredient controls" onPress={() => router.push('/builder?advanced=1')} />
+        <SettingRow icon="shield-check-outline" title="Dietary preferences & allergies" value={settings.foodAllergies.length || settings.dietaryPreferences.length ? `${settings.dietaryPreferences.length} preferences · ${settings.foodAllergies.length} allergies` : 'None selected'} onPress={() => router.push('/preferences')} />
         <GlassCard style={styles.row}>
           <Icon name="cup-outline" color={palette.cyan} />
           <View style={styles.copy}><Text style={styles.title}>Show Creamy</Text><Text style={styles.subtitle}>Display the animated fill helper during the tutorial</Text></View>
           <Switch value={settings.creamyHelperEnabled} onValueChange={(creamyHelperEnabled) => updateSettings({ creamyHelperEnabled })} trackColor={{ false: palette.panelRaised, true: palette.cyan }} thumbColor={palette.white} accessibilityLabel="Toggle Creamy fill helper" />
+        </GlassCard>
+        <GlassCard style={styles.row}>
+          <Icon name="comment-question-outline" color={palette.lavender} />
+          <View style={styles.copy}><Text style={styles.title}>Creamy tips</Text><Text style={styles.subtitle}>Show one short, dismissible tip when it is useful</Text></View>
+          <Switch value={settings.creamyTipsEnabled} onValueChange={(creamyTipsEnabled) => updateSettings({ creamyTipsEnabled })} trackColor={{ false: palette.panelRaised, true: palette.cyan }} thumbColor={palette.white} accessibilityLabel="Toggle Creamy coaching tips" />
+        </GlassCard>
+        <GlassCard style={styles.row}>
+          <Icon name="creation-outline" color={palette.pink} />
+          <View style={styles.copy}><Text style={styles.title}>Creamy animations</Text><Text style={styles.subtitle}>Animate ingredients, reactions, talking, and celebrations</Text></View>
+          <Switch value={settings.creamyMotionEnabled} onValueChange={(creamyMotionEnabled) => updateSettings({ creamyMotionEnabled })} trackColor={{ false: palette.panelRaised, true: palette.cyan }} thumbColor={palette.white} accessibilityLabel="Toggle Creamy animations" />
         </GlassCard>
         <SettingRow icon="ruler-square" title="Unit system" value={settings.units === 'metric' ? 'Metric (g, ml)' : 'US (oz, fl oz)'} onPress={() => updateSettings({ units: settings.units === 'metric' ? 'us' : 'metric' })} />
         <SettingRow icon="format-list-numbered" title="Measurement style" value={settings.measurementMode === 'kitchen' ? 'Kitchen-friendly (cups, tbsp, tsp)' : 'Exact amounts'} onPress={() => updateSettings({ measurementMode: settings.measurementMode === 'kitchen' ? 'exact' : 'kitchen' })} />

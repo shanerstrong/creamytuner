@@ -104,11 +104,12 @@ export function GlassCard({ children, style, onPress, accessibilityLabel }: { ch
 
 export function GradientButton({ title, onPress, icon, disabled = false, variant = 'primary', accessibilityLabel }: { title: string; onPress: () => void; icon?: IconName; disabled?: boolean; variant?: 'primary' | 'secondary' | 'danger'; accessibilityLabel?: string }) {
   const colors = variant === 'primary' ? gradients.primary : variant === 'danger' ? ['#5D2339', '#A42D50'] as const : ['#293553', '#202B48'] as const;
+  const foreground = variant === 'primary' ? palette.black : palette.white;
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? title} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.buttonOuter, pressed && styles.pressed, disabled && styles.disabled]}>
       <LinearGradient colors={colors} style={styles.button}>
-        <Text style={styles.buttonText}>{title}</Text>
-        {icon ? <Icon name={icon} size={18} /> : null}
+        <Text style={[styles.buttonText, { color: foreground }]}>{title}</Text>
+        {icon ? <Icon name={icon} size={18} color={foreground} /> : null}
       </LinearGradient>
     </Pressable>
   );
@@ -212,7 +213,7 @@ const styles = StyleSheet.create({
   cardContent: { flex: 1, zIndex: 1 },
   buttonOuter: { borderRadius: radii.pill, overflow: 'hidden', ...shadows.glow },
   button: { minHeight: 52, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderRadius: radii.pill },
-  buttonText: { color: palette.white, fontSize: 15, fontWeight: '800' },
+  buttonText: { fontSize: 15, fontWeight: '800' },
   pressed: { opacity: 0.78, transform: [{ scale: 0.985 }] },
   disabled: { opacity: 0.45 },
   pill: { minHeight: 44, overflow: 'hidden', borderWidth: 1, borderColor: palette.border, paddingHorizontal: spacing.md, paddingVertical: 9, borderRadius: radii.pill, backgroundColor: 'rgba(17,25,49,0.8)', justifyContent: 'center' },

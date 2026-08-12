@@ -1,4 +1,4 @@
-import { ingredientSchema, type Ingredient } from '@/src/types';
+import { ingredientSchema, type FoodAllergen, type Ingredient } from '@/src/types';
 
 const seeds = [
   { id: 'whey-vanilla', name: 'Whey Protein', subtitle: 'Vanilla', category: 'protein', defaultUnit: 'g', defaultAmount: 25, referenceAmount: 30, nutrition: { calories: 120, protein: 24, carbs: 3, sugar: 2, fat: 2, fiber: 0 }, rating: 4.8, benefit: 'Best for creaminess', isCustom: false },
@@ -77,7 +77,44 @@ const seeds = [
   { id: 'torani-sf-vanilla', name: 'Torani Sugar Free Vanilla Syrup', brand: 'Torani', subtitle: 'Sugar-free flavor syrup', category: 'flavoring', defaultUnit: 'ml', defaultAmount: 15, referenceAmount: 30, referenceLabel: '2 tbsp (30 ml)', nutrition: { calories: 0, protein: 0, carbs: 0, sugar: 0, fat: 0, fiber: 0 }, sourceUrl: 'https://www.torani.com/foodservice/products/sugar-free-vanilla-syrup', sourceCheckedAt: '2026-08-01', popularityRank: 19, cautions: ['Sweetener blend may change; check the bottle label.'] },
 ];
 
-export const seededIngredients = ingredientSchema.array().parse(seeds);
+const allergensById: Record<string, FoodAllergen[]> = {
+  'whey-vanilla': ['milk'], 'whey-chocolate': ['milk'], 'casein-vanilla': ['milk'], 'skim-milk-powder': ['milk'],
+  'milk-2': ['milk'], 'skim-milk': ['milk'], 'whole-milk': ['milk'], 'greek-yogurt': ['milk'],
+  'cottage-cheese-low-fat': ['milk'], 'cream-cheese': ['milk'], 'evaporated-milk': ['milk'], 'half-and-half': ['milk'],
+  'heavy-cream': ['milk'], kefir: ['milk'], ricotta: ['milk'], 'fairlife-2': ['milk'], 'fairlife-fat-free': ['milk'],
+  'fairlife-chocolate': ['milk'], 'chobani-zero-plain': ['milk'], 'fage-0': ['milk'], 'daisy-cottage-2': ['milk'],
+  'philadelphia-original': ['milk'], 'on-vanilla-whey': ['milk'], 'dymatize-iso100-vanilla': ['milk'],
+  'egg-white-powder': ['egg'], 'almond-milk': ['tree-nuts'], 'cashew-milk': ['tree-nuts'], 'silk-almond': ['tree-nuts'],
+  'almond-extract': ['tree-nuts'], 'soy-milk': ['soy'], 'soy-protein': ['soy'], 'silk-soy': ['soy'],
+  'peanut-butter': ['peanuts'], 'pb2-original': ['peanuts'], 'cookie-pieces': ['wheat'], 'graham-crumbs': ['wheat'],
+};
+
+const incompleteAllergenIds = new Set([
+  'cheesecake-pudding', 'jello-vanilla-zero', 'jello-cheesecake-zero', 'cookie-pieces', 'graham-crumbs',
+  'dark-chocolate', 'vegan-protein-blend', 'stevia', 'monk-fruit', 'torani-sf-vanilla',
+]);
+
+const genericReferenceIds = new Set([
+  'strawberries', 'banana', 'mango', 'blueberries', 'raspberries', 'peaches', 'pineapple',
+  'coconut-milk', 'xanthan-gum', 'guar-gum', 'cacao-nibs',
+]);
+const majorAllergenReference = 'https://www.fda.gov/food/food-labeling-nutrition/food-allergies';
+
+export const seededIngredients = ingredientSchema.array().parse(seeds.map((ingredient) => {
+  const allergens = allergensById[ingredient.id] ?? [];
+  const recordedSource = 'sourceUrl' in ingredient && Boolean(ingredient.sourceUrl);
+  const genericReference = genericReferenceIds.has(ingredient.id);
+  const verified = !incompleteAllergenIds.has(ingredient.id) && (recordedSource || genericReference);
+  return {
+    ...ingredient,
+    allergens,
+    mayContainAllergens: [],
+    allergenDataStatus: verified ? 'verified' : 'incomplete',
+    allergenStatement: allergens.length ? `Contains ${allergens.join(', ').replaceAll('-', ' ')}.` : verified ? 'No major allergens recorded in this reference.' : 'Check the current package allergen statement.',
+    allergenSourceUrl: recordedSource ? ingredient.sourceUrl : genericReference ? majorAllergenReference : '',
+    allergenVerifiedAt: verified ? ('sourceCheckedAt' in ingredient ? ingredient.sourceCheckedAt : '2026-08-04') : '',
+  };
+}));
 
 export const ingredientById = (id: string, custom: Ingredient[] = []) =>
   [...seededIngredients, ...custom].find((ingredient) => ingredient.id === id);
