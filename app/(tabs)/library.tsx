@@ -1,0 +1,158 @@
+import { router, useLocalSearchParams } from 'expo-router';
+import { useMemo, useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { AppHeader, EmptyState, GlassCard, Icon, IconButton, Pill, Screen, SearchField, type IconName } from '@/src/components/ui';
+import { ingredientCategoryLabels } from '@/src/data/ingredients';
+import { getIngredientEligibility, partitionIngredientEligibility } from '@/src/domain/dietary';
+import { useApp } from '@/src/providers/app-provider';
+import { palette, radii, spacing } from '@/src/theme';
+import type { Ingredient, IngredientCategory } from '@/src/types';
+
+const categories: { id: 'all' | IngredientCategory; label: string }[] = [
+  { id: 'all', label: 'All' }, { id: 'protein', label: 'Protein' }, { id: 'base', label: 'Milk & bases' },
+  { id: 'sweetener', label: 'Sweeteners' }, { id: 'stabilizer', label: 'Stabilizers' }, { id: 'fruit', label: 'Fruit' },
+  { id: 'flavoring', label: 'Flavorings' }, { id: 'mix-in', label: 'Mix-ins' },
+];
+const sorts = [{ id: 'popular', label: 'Popular' }, { id: 'az', label: 'A–Z' }, { id: 'protein', label: 'Highest protein' }, { id: 'calories', label: 'Lowest calories' }] as const;
+type SortId = typeof sorts[number]['id'];
+const categoryIcons: Record<IngredientCategory, IconName> = { protein: 'arm-flex', base: 'cup-water', sweetener: 'spoon-sugar', stabilizer: 'blur', fruit: 'fruit-cherries', flavoring: 'shaker-outline', 'mix-in': 'cookie' };
+
+function IngredientItem({ ingredient, grid, onPress }: { ingredient: Ingredient; grid: boolean; onPress: () => void }) {
+  const card = (
+    <GlassCard onPress={onPress} accessibilityLabel={`Select ${ingredient.name}`} style={[styles.item, grid && styles.gridItemInner]}>
+      <View style={[styles.itemContent, grid && styles.gridItemContent]}>
+        <View style={[styles.ingredientIcon, grid && styles.gridIcon]}><Icon name={categoryIcons[ingredient.category]} color={ingredient.isCustom ? palette.cyan : palette.lavender} /></View>
+        <View style={styles.copy}>
+          <View style={styles.nameRow}><Text style={styles.name}>{ingredient.name}</Text>{ingredient.isCustom ? <Text style={styles.custom}>MY ITEM</Text> : null}</View>
+          <Text style={styles.meta}>{ingredient.brand || ingredient.subtitle || ingredientCategoryLabels[ingredient.category]}</Text>
+          <Text style={styles.benefit}>{Math.round(ingredient.nutrition.calories)} cal · {Number(ingredient.nutrition.protein.toFixed(1))} g protein</Text>
+        </View>
+      </View>
+    </GlassCard>
+  );
+  return grid ? <View style={styles.gridCell}>{card}</View> : card;
+}
+
+export default function IngredientLibraryScreen() {
+  const { ingredients, settings, updateSettings } = useApp();
+  const params = useLocalSearchParams<{ tutorial?: string; category?: string }>();
+  const tutorialPicker = params.tutorial === '1';
+  const initialCategory = categories.some((item) => item.id === params.category) ? params.category as 'all' | IngredientCategory : 'all';
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<'all' | IngredientCategory>(initialCategory);
+  const [sort, setSort] = useState<SortId>('popular');
+  const eligibility = useMemo(() => partitionIngredientEligibility(ingredients, settings), [ingredients, settings]);
+  const filtered = useMemo(() => eligibility.allowed.filter((ingredient) => {
+    const needle = query.trim().toLowerCase();
+    return (category === 'all' || ingredient.category === category) && (!needle || `${ingredient.name} ${ingredient.subtitle} ${ingredient.brand ?? ''} ${(ingredient.tags ?? []).join(' ')}`.toLowerCase().includes(needle));
+  }).sort((a, b) => {
+    if (a.isCustom !== b.isCustom) return a.isCustom ? -1 : 1;
+    if (sort === 'az') return a.name.localeCompare(b.name);
+    if (sort === 'protein') return (b.nutrition.protein / b.referenceAmount) - (a.nutrition.protein / a.referenceAmount);
+    if (sort === 'calories') return (a.nutrition.calories / a.referenceAmount) - (b.nutrition.calories / b.referenceAmount);
+    return (a.popularityRank ?? 999) - (b.popularityRank ?? 999);
+  }), [category, eligibility.allowed, query, sort]);
+  const labelCheck = useMemo(() => eligibility.labelCheck.filter((ingredient) => {
+    const needle = query.trim().toLowerCase();
+    return (category === 'all' || ingredient.category === category) && (!needle || `${ingredient.name} ${ingredient.subtitle} ${ingredient.brand ?? ''}`.toLowerCase().includes(needle));
+  }), [category, eligibility.labelCheck, query]);
+  const custom = filtered.filter((item) => item.isCustom);
+  const bundled = filtered.filter((item) => !item.isCustom);
+  const grid = settings.ingredientLibraryView === 'grid';
+
+  const selectIngredient = async (ingredient: Ingredient, acknowledged = false) => {
+    const result = getIngredientEligibility(ingredient, settings.dietaryPreferences, settings.foodAllergies, settings.customAvoidFoods);
+    if (result.status === 'blocked-allergy' || result.status === 'blocked-dietary') return;
+    if (result.status === 'label-check-required' && tutorialPicker && !acknowledged) {
+      Alert.alert('Check the current label', result.reasons[0], [{ text: 'Cancel', style: 'cancel' }, { text: 'I checked the label', onPress: () => { void selectIngredient(ingredient, true); } }]);
+      return;
+    }
+    if (!tutorialPicker) {
+      router.push(`/ingredient/${ingredient.id}` as never);
+      return;
+    }
+    const draft = settings.tutorialDraft;
+    if (ingredient.category === 'base') {
+      const baseItems = draft.baseItems.some((item) => item.ingredientId === ingredient.id)
+        ? draft.baseItems
+        : [...draft.baseItems, { ingredientId: ingredient.id, amount: ingredient.defaultAmount, unit: ingredient.defaultUnit }];
+      await updateSettings({ tutorialDraft: { ...draft, baseItems } });
+    } else if (draft.stage === 'final-cycle' && draft.finalCycleState === 'prepare' && ingredient.category === 'mix-in') {
+      const mixInIds = [...new Set([...draft.mixInIds, ingredient.id])];
+      await updateSettings({ tutorialDraft: { ...draft, mixInId: mixInIds[0] ?? null, mixInIds } });
+    } else {
+      const selectedIngredientIds = [...new Set([...draft.selectedIngredientIds, ingredient.id])];
+      await updateSettings({ tutorialDraft: { ...draft, selectedIngredientIds, itemAmounts: { ...draft.itemAmounts, [ingredient.id]: ingredient.defaultAmount } } });
+    }
+    router.replace('/tutorial?resume=1');
+  };
+
+  return (
+    <Screen>
+      <AppHeader
+        title={tutorialPicker ? 'Add an ingredient' : 'Ingredient Library'}
+        subtitle={tutorialPicker ? 'Tap one to add it to this pint' : `${ingredients.length} offline references`}
+        left={tutorialPicker ? <IconButton icon="close" label="Return to tutorial" onPress={() => router.replace('/tutorial?resume=1')} /> : undefined}
+        right={<IconButton
+          icon="plus"
+          label="Add new ingredient"
+          onPress={() => router.push({ pathname: '/ingredient-new', params: tutorialPicker ? { tutorial: '1', category } : {} })}
+        />}
+      />
+      <SearchField value={query} onChangeText={setQuery} />
+      <View style={styles.filterSection}>
+        <Text style={styles.controlLabel}>FILTER BY</Text>
+        <View style={styles.filterRow}>{categories.map((item) => <Pill key={item.id} label={item.label} active={category === item.id} onPress={() => setCategory(item.id)} />)}</View>
+      </View>
+      <View style={styles.controls}>
+        <View style={styles.sortBlock}>
+          <Text style={styles.controlLabel}>SORT BY</Text>
+          <View style={styles.sortRow}>{sorts.map((item) => <Pill key={item.id} label={item.label} active={sort === item.id} onPress={() => setSort(item.id)} />)}</View>
+        </View>
+        <View>
+          <Text style={styles.controlLabel}>VIEW</Text>
+          <View style={styles.viewToggle} accessibilityRole="radiogroup">
+            <Pressable onPress={() => updateSettings({ ingredientLibraryView: 'list' })} style={[styles.viewButton, !grid && styles.viewButtonActive]} accessibilityRole="radio" accessibilityState={{ selected: !grid }} accessibilityLabel="List view"><Icon name="view-list" size={21} color={!grid ? palette.text : palette.textMuted} /></Pressable>
+            <Pressable onPress={() => updateSettings({ ingredientLibraryView: 'grid' })} style={[styles.viewButton, grid && styles.viewButtonActive]} accessibilityRole="radio" accessibilityState={{ selected: grid }} accessibilityLabel="Grid view"><Icon name="view-grid" size={21} color={grid ? palette.text : palette.textMuted} /></Pressable>
+          </View>
+        </View>
+      </View>
+      {!filtered.length ? <EmptyState icon="magnify-close" title="No ingredients found" message="Try another search or clear a category filter." action="Clear filters" onAction={() => { setQuery(''); setCategory('all'); }} /> : null}
+      {custom.length ? <><Text style={styles.groupTitle}>My ingredients</Text><View style={[styles.list, grid && styles.grid]}>{custom.map((item) => <IngredientItem key={item.id} ingredient={item} grid={grid} onPress={() => void selectIngredient(item)} />)}</View></> : null}
+      {bundled.length ? <><Text style={styles.groupTitle}>{custom.length ? 'Creamy Tuner library' : 'Ingredients'}</Text><View style={[styles.list, grid && styles.grid]}>{bundled.map((item) => <IngredientItem key={item.id} ingredient={item} grid={grid} onPress={() => void selectIngredient(item)} />)}</View></> : null}
+      {labelCheck.length ? <><Text style={styles.groupTitle}>Check the label</Text><Text style={styles.labelCheckCopy}>These products have incomplete allergen information and are never recommended while an allergy filter is active.</Text><View style={[styles.list, grid && styles.grid]}>{labelCheck.map((item) => <IngredientItem key={item.id} ingredient={item} grid={grid} onPress={() => void selectIngredient(item)} />)}</View></> : null}
+      <Text style={styles.disclaimer}>Nutrition is informational and may change. For branded foods, compare the saved reference with the current package label.</Text>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  filterSection: { marginTop: spacing.md },
+  controlLabel: { color: palette.textFaint, fontSize: 13, lineHeight: 18, fontWeight: '900', letterSpacing: 0.8, marginBottom: spacing.xs },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  controls: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, marginTop: spacing.md, marginBottom: spacing.md },
+  sortBlock: { flex: 1 },
+  sortRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  viewToggle: { flexDirection: 'row', borderWidth: 1, borderColor: palette.border, borderRadius: radii.md, overflow: 'hidden' },
+  viewButton: { width: 46, height: 46, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.panelSoft },
+  viewButtonActive: { backgroundColor: palette.panelRaised },
+  groupTitle: { color: palette.text, fontSize: 21, lineHeight: 27, fontWeight: '800', marginTop: spacing.sm, marginBottom: spacing.xs },
+  list: { gap: spacing.xs },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, alignItems: 'stretch' },
+  item: { padding: spacing.sm },
+  itemContent: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  gridCell: { width: '48.5%' },
+  gridItemInner: { minHeight: 190 },
+  gridItemContent: { flex: 1, flexDirection: 'column', alignItems: 'flex-start' },
+  ingredientIcon: { width: 48, height: 48, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(174,134,255,0.12)' },
+  gridIcon: { width: 44, height: 44 },
+  copy: { flex: 1, width: '100%' },
+  nameRow: { gap: spacing.xs },
+  name: { color: palette.text, fontSize: 16, lineHeight: 22, fontWeight: '800' },
+  custom: { color: palette.cyan, fontSize: 13, lineHeight: 18, fontWeight: '900', letterSpacing: 0.4 },
+  meta: { color: palette.textMuted, fontSize: 14, lineHeight: 20, marginTop: 2 },
+  benefit: { color: palette.warning, fontSize: 13, lineHeight: 19, marginTop: 4 },
+  labelCheckCopy: { color: palette.warning, fontSize: 13, lineHeight: 19, marginBottom: spacing.xs },
+  disclaimer: { color: palette.textMuted, fontSize: 13, lineHeight: 19, marginTop: spacing.lg },
+});

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://creamytuner.local/schemas/visual-qa.schema.json",
+  "title": "Creamy Tuner visual QA configuration",
+  "type": "object",
+  "required": ["figma", "profiles", "screens"],
+  "properties": {
+    "figma": {
+      "type": "object",
+      "required": ["fileKey", "url", "canonicalViewport"]
+    },
+    "profiles": {
+      "type": "object",
+      "required": ["ios", "web"]
+    },
+    "screens": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "route", "figmaNodeId", "codeOwner"]
+      }
+    }
+  }
+}

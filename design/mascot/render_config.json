@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "seed": 240804,
+  "engine": "CYCLES",
+  "fps": 30,
+  "welcome": {
+    "width": 720,
+    "height": 720,
+    "entranceFrames": 96,
+    "idleFrames": 72,
+    "samples": 2,
+    "posterSamples": 16,
+    "background": [0.068, 0.083, 0.197, 1.0]
+  },
+  "tutorial": {
+    "width": 192,
+    "height": 192,
+    "samples": 32,
+    "transparent": true,
+    "states": [
+      { "file": "01-empty-bored-closed.png", "fill": 0.0, "expression": "bored", "mouthOpen": false },
+      { "file": "02-empty-bored-open.png", "fill": 0.0, "expression": "bored", "mouthOpen": true },
+      { "file": "03-fill-25-happy-closed.png", "fill": 0.25, "expression": "happy", "mouthOpen": false },
+      { "file": "04-fill-25-happy-open.png", "fill": 0.25, "expression": "happy", "mouthOpen": true },
+      { "file": "05-fill-50-happy-closed.png", "fill": 0.5, "expression": "happy", "mouthOpen": false },
+      { "file": "06-fill-50-happy-open.png", "fill": 0.5, "expression": "happy", "mouthOpen": true },
+      { "file": "07-fill-75-happy-closed.png", "fill": 0.75, "expression": "happy", "mouthOpen": false },
+      { "file": "08-fill-75-happy-open.png", "fill": 0.75, "expression": "happy", "mouthOpen": true },
+      { "file": "09-near-full-concerned-closed.png", "fill": 0.9, "expression": "concerned", "mouthOpen": false },
+      { "file": "10-near-full-concerned-open.png", "fill": 0.9, "expression": "concerned", "mouthOpen": true },
+      { "file": "11-full-happy-closed.png", "fill": 1.0, "expression": "happy", "mouthOpen": false },
+      { "file": "12-full-happy-open.png", "fill": 1.0, "expression": "happy", "mouthOpen": true },
+      { "file": "13-overflow-frightened-closed.png", "fill": 1.12, "expression": "frightened", "mouthOpen": false },
+      { "file": "14-overflow-frightened-open.png", "fill": 1.12, "expression": "frightened", "mouthOpen": true },
+      { "file": "15-celebration.png", "fill": 1.0, "expression": "celebration", "mouthOpen": true },
+      { "file": "16-angry.png", "fill": 1.0, "expression": "angry", "mouthOpen": true },
+      { "file": "17-full-blink.png", "fill": 1.0, "expression": "happy", "mouthOpen": false, "blink": true }
+    ]
+  },
+  "palette": {
+    "navy": [0.003, 0.008, 0.031, 1.0],
+    "pink": [1.0, 0.115, 0.42, 1.0],
+    "lightPink": [1.0, 0.43, 0.67, 1.0],
+    "cream": [1.0, 0.84, 0.92, 1.0],
+    "cyan": [0.12, 0.76, 0.92, 1.0],
+    "black": [0.004, 0.006, 0.012, 1.0],
+    "white": [1.0, 1.0, 1.0, 1.0]
+  }
+}

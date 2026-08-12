@@ -1,0 +1,113 @@
+{
+  "$schema": "./visual-qa.schema.json",
+  "figma": {
+    "fileKey": "tw9eZunEUfHO0HvFjqLqH9",
+    "fileName": "Creamy Tuner Design System",
+    "url": "https://www.figma.com/design/tw9eZunEUfHO0HvFjqLqH9",
+    "canonicalViewport": {
+      "width": 390,
+      "height": 844,
+      "scale": 1
+    }
+  },
+  "profiles": {
+    "ios": {
+      "maxMismatchPercent": 1,
+      "pixelThreshold": 0.1,
+      "includeAntialiasing": false,
+      "releaseGate": true
+    },
+    "web": {
+      "maxMismatchPercent": 3,
+      "pixelThreshold": 0.1,
+      "includeAntialiasing": false,
+      "releaseGate": false
+    }
+  },
+  "screens": [
+    {
+      "id": "welcome",
+      "name": "Welcome",
+      "route": "/",
+      "state": "first launch, before onboarding",
+      "figmaNodeId": "47:5",
+      "codeOwner": "app/index.tsx"
+    },
+    {
+      "id": "home",
+      "name": "Home",
+      "route": "/home",
+      "state": "onboarded seed data",
+      "figmaNodeId": "47:6",
+      "codeOwner": "app/(tabs)/home.tsx"
+    },
+    {
+      "id": "recipes",
+      "name": "Recipes",
+      "route": "/recipes",
+      "state": "onboarded seed data",
+      "figmaNodeId": "47:7",
+      "codeOwner": "app/(tabs)/recipes.tsx"
+    },
+    {
+      "id": "library",
+      "name": "Library",
+      "route": "/library",
+      "state": "onboarded seed data, all filters",
+      "figmaNodeId": "47:8",
+      "codeOwner": "app/(tabs)/library.tsx"
+    },
+    {
+      "id": "profile",
+      "name": "Profile",
+      "route": "/profile",
+      "state": "Chef profile, six recipes",
+      "figmaNodeId": "47:9",
+      "codeOwner": "app/(tabs)/profile.tsx"
+    },
+    {
+      "id": "settings",
+      "name": "Settings",
+      "route": "/settings",
+      "state": "default preferences",
+      "figmaNodeId": "47:10",
+      "codeOwner": "app/settings.tsx"
+    },
+    {
+      "id": "builder",
+      "name": "Builder",
+      "route": "/builder",
+      "state": "simple mode, strawberry selected",
+      "figmaNodeId": "47:11",
+      "codeOwner": "app/builder.tsx"
+    }
+  ],
+  "acceptance": {
+    "geometryTolerancePx": {
+      "ios": 2,
+      "web": 3
+    },
+    "requiredSemanticChecks": [
+      "No clipped, overlapping, or off-screen controls",
+      "Interactive controls retain accessible names",
+      "Primary action foreground contrast is at least 4.5:1",
+      "Text, icons, imagery, selected states, and navigation match the Figma state",
+      "No unexpected runtime errors or warnings"
+    ],
+    "contrastChecks": [
+      {
+        "id": "primary-action-gradient-start",
+        "foreground": "#000000",
+        "background": "#D62CB4",
+        "minimumRatio": 4.5
+      },
+      {
+        "id": "primary-action-gradient-end",
+        "foreground": "#000000",
+        "background": "#F2578A",
+        "minimumRatio": 4.5
+      }
+    ]
+  },
+  "masks": {}
+}

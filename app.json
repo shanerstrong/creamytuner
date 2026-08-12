@@ -1,0 +1,75 @@
+{
+  "expo": {
+    "name": "Creamy Tuner",
+    "slug": "creamytuner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "creamytuner",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.creamytuner.app"
+    },
+    "android": {
+      "package": "com.creamytuner.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#090D20",
+        "foregroundImage": "./assets/images/android-icon-foreground.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "resize",
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#090D20",
+          "dark": {
+            "backgroundColor": "#090D20"
+          }
+        }
+      ],
+      "expo-sqlite",
+      "expo-asset",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Creamy Tuner opens only the photos you choose for a profile, recipe, or ingredient label. Ingredient labels can be read on-device and are not uploaded.",
+          "cameraPermission": "Creamy Tuner uses the camera only when you choose to take a profile, finished-pint, or ingredient-label photo. Label text is read on-device and photos stay on your device.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#F14E9B",
+          "defaultChannel": "freeze-reminders"
+        }
+      ],
+      "expo-video",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true,
+      "baseUrl": "/creamytuner"
+    }
+  }
+}
