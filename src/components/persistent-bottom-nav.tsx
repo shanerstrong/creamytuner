@@ -27,7 +27,7 @@ function activeDestination(pathname: string) {
 export function PersistentBottomNav() {
   const pathname = usePathname();
   const { ready, settings } = useApp();
-  if (!ready || !settings.onboarded || settings.onboardingVersion < CURRENT_ONBOARDING_VERSION) return null;
+  if (pathname === '/' || pathname === '/tutorial' || !ready || !settings.onboarded || settings.onboardingVersion < CURRENT_ONBOARDING_VERSION) return null;
   const active = activeDestination(pathname);
   return (
     <SafeAreaView edges={['bottom']} style={styles.safe}>

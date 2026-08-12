@@ -149,10 +149,10 @@ export function WelcomeCreamy({ compact = false, motionEnabled = true }: { compa
   }, [animate, nextFunnyFace, reaction, showRandomJoke]);
 
   const beginDrag = useCallback(() => {
+    dismissJoke();
     showFace(TUTORIAL_CREAMY_FRAMES[13]);
-    showRandomJoke();
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-  }, [showFace, showRandomJoke]);
+  }, [dismissJoke, showFace]);
 
   const markDragStarted = useCallback(() => {
     if (suppressResetTimer.current) clearTimeout(suppressResetTimer.current);
@@ -251,7 +251,7 @@ export function WelcomeCreamy({ compact = false, motionEnabled = true }: { compa
   );
 
   return (
-    <View style={[styles.tapTarget, compact && styles.tapTargetCompact]}>
+    <View style={[styles.tapTarget, compact && styles.tapTargetCompact, joke && styles.tapTargetWithJoke, joke && compact && styles.tapTargetCompactWithJoke]}>
       {joke ? (
         <Animated.View testID="welcome-creamy-joke" style={[styles.jokeBubble, compact && styles.jokeBubbleCompact]} accessibilityRole="summary" accessibilityLiveRegion="polite">
           <View style={styles.jokeRow}>
@@ -287,8 +287,10 @@ export function WelcomeCreamy({ compact = false, motionEnabled = true }: { compa
 }
 
 const styles = StyleSheet.create({
-  tapTarget: { position: 'relative', width: 320, height: 352, alignItems: 'center', justifyContent: 'center' },
+  tapTarget: { position: 'relative', width: 320, height: 352, alignItems: 'center', justifyContent: 'flex-end' },
   tapTargetCompact: { width: 242, height: 266 },
+  tapTargetWithJoke: { height: 482 },
+  tapTargetCompactWithJoke: { height: 406 },
   activationSurface: { alignItems: 'center', justifyContent: 'center' },
   stage: { position: 'relative', zIndex: 1, width: 320, height: 352, backgroundColor: '#030C26', overflow: 'hidden' },
   stageCompact: { width: 242, height: 266 },
@@ -296,8 +298,8 @@ const styles = StyleSheet.create({
   videoLoading: { opacity: 0 },
   faceCover: { ...StyleSheet.absoluteFillObject, zIndex: 3, alignItems: 'center', justifyContent: 'center', backgroundColor: '#030C26' },
   reactionImage: { position: 'absolute', left: '-12%', top: '-12%', width: '124%', height: '124%' },
-  jokeBubble: { position: 'absolute', top: 8, zIndex: 20, width: 296, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(78,217,232,0.78)', backgroundColor: 'rgba(24,37,65,0.98)', padding: 12 },
-  jokeBubbleCompact: { top: 4, width: 226, borderRadius: 15, padding: 9 },
+  jokeBubble: { position: 'absolute', top: 0, zIndex: 20, width: 296, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(78,217,232,0.78)', backgroundColor: 'rgba(24,37,65,0.98)', padding: 12 },
+  jokeBubbleCompact: { top: 0, width: 226, borderRadius: 15, padding: 9 },
   jokeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   jokeCopy: { flex: 1 },
   jokeSource: { color: palette.cyan, fontSize: 11, lineHeight: 15, fontWeight: '900', letterSpacing: 1.2, marginBottom: 2 },

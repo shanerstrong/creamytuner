@@ -124,6 +124,12 @@ export default function TutorialScreen() {
   const { width, height, fontScale } = useWindowDimensions();
   const compact = height < 720 || fontScale > 1.15;
   const animationDistance = Math.min(width, 560);
+  const exitTutorial = () => {
+    setCustomCategory(null);
+    setLibraryRequest(null);
+    setEditorId(null);
+    router.replace(settings.onboarded && settings.onboardingVersion >= CURRENT_ONBOARDING_VERSION ? '/(tabs)/home' : '/?intro=1');
+  };
 
   useEffect(() => {
     if (!ready || initialized.current) return;
@@ -578,7 +584,13 @@ export default function TutorialScreen() {
         onFreezeLater={() => { void freezeLater(); }}
       />
     }>
-      <View style={styles.tutorialBrand}><BrandWordmark compact />{!compact ? <Text style={styles.tutorialHeader}>Your first pint</Text> : null}</View>
+      <View style={styles.tutorialTop}>
+        <View style={styles.tutorialBrand}><BrandWordmark compact />{!compact ? <Text style={styles.tutorialHeader}>Your first pint</Text> : null}</View>
+        <Pressable onPress={exitTutorial} accessibilityRole="button" accessibilityLabel="Exit tutorial" style={({ pressed }) => [styles.exitTutorial, pressed && styles.pressed]}>
+          <Icon name="close" size={19} color={palette.textMuted} />
+          <Text style={styles.exitTutorialText}>Exit</Text>
+        </Pressable>
+      </View>
       <TutorialProgress stage={draft.stage} />
       <Animated.View key={`${draft.stage}-${draft.firstCycleState}-${draft.finalCycleState}`} style={[styles.animatedPage, Platform.OS === 'web' ? undefined : { transform: [{ translateX: slide }] }]}>{page}</Animated.View>
       {removed ? <Animated.View style={[styles.undo, { opacity: undoOpacity }]}><Pressable onPress={undoRemove} accessibilityRole="button" accessibilityLabel={`Undo removing ${ingredients.find((item) => item.id === removed.item.ingredientId)?.name ?? 'ingredient'}`} style={styles.undoButton}><Text style={styles.undoText}>Ingredient removed</Text><Text style={styles.undoAction}>Undo</Text></Pressable></Animated.View> : null}
@@ -917,8 +929,11 @@ const styles = StyleSheet.create({
   keyboardAvoider: { flex: 1 },
   content: { flex: 1, paddingBottom: 0 },
   animatedPage: { flex: 1, minHeight: 0 },
+  tutorialTop: { position: 'relative', minHeight: 54, justifyContent: 'center' },
   tutorialBrand: { alignItems: 'center', gap: 1, marginTop: 1 },
   tutorialHeader: { color: palette.text, fontSize: 17, lineHeight: 21, fontWeight: '800', textAlign: 'center' },
+  exitTutorial: { position: 'absolute', right: 0, top: 4, minWidth: 58, minHeight: 44, paddingHorizontal: 8, borderRadius: radii.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, backgroundColor: 'rgba(255,255,255,0.06)' },
+  exitTutorialText: { color: palette.textMuted, fontSize: 13, lineHeight: 17, fontWeight: '800' },
   progress: { marginTop: -2, marginBottom: spacing.xs },
   progressTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   progressPhase: { color: palette.cyan, fontSize: 13, lineHeight: 18, fontWeight: '900', letterSpacing: 0.7 },

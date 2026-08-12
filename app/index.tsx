@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams, usePathname } from 'expo-router';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -36,10 +36,21 @@ export default function WelcomeScreen() {
   const veryCompact = height < 700 || width < 390;
   const tutorialComplete = intro !== '1' && settings.onboarded && settings.onboardingVersion >= CURRENT_ONBOARDING_VERSION;
   const hasDraft = settings.tutorialDraft.stage !== 'machine' || settings.tutorialDraft.baseItems.length > 0 || settings.tutorialDraft.selectedIngredientIds.length > 0;
+  const melodyPlayer = useAudioPlayer(CREAMYTUNER_INTRO_MELODY, { downloadFirst: true });
+  const melodyStatus = useAudioPlayerStatus(melodyPlayer);
+  const autoplayAttempted = useRef(false);
 
   useEffect(() => {
     if (ready && tutorialComplete && pathname === '/') router.replace('/(tabs)/home');
   }, [pathname, ready, tutorialComplete]);
+
+  useEffect(() => {
+    if (!ready || tutorialComplete || !melodyStatus.isLoaded || autoplayAttempted.current) return;
+    autoplayAttempted.current = true;
+    if (Platform.OS === 'web') return;
+    void melodyPlayer.seekTo(0);
+    melodyPlayer.play();
+  }, [melodyPlayer, melodyStatus.isLoaded, ready, tutorialComplete]);
 
   if (!ready || tutorialComplete) return <LoadingScreen />;
 
@@ -64,7 +75,24 @@ export default function WelcomeScreen() {
       <Animated.View entering={settings.creamyMotionEnabled ? FadeInDown.duration(500).delay(320) : undefined} style={styles.bottom}>
         <GradientButton title="Build my pint" icon="arrow-right" onPress={() => { void startFresh(); }} />
         {hasDraft ? <GradientButton title="Resume saved pint" icon="history" variant="secondary" onPress={() => router.push('/tutorial?resume=1')} /> : null}
-        <Text style={styles.disclaimer}>Recipes and nutrition are informational. Always follow your machine{`\u2019`}s official safety instructions.</Text>
+        <View style={styles.bottomMeta}>
+          <Pressable
+            onPress={() => {
+              if (melodyStatus.playing) melodyPlayer.pause();
+              else {
+                void melodyPlayer.seekTo(0);
+                melodyPlayer.play();
+              }
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={melodyStatus.playing ? 'Turn intro sound off' : 'Turn intro sound on'}
+            accessibilityState={{ checked: melodyStatus.playing }}
+            style={({ pressed }) => [styles.soundToggle, melodyStatus.playing && styles.soundToggleActive, pressed && styles.soundTogglePressed]}
+          >
+            <Icon name={melodyStatus.playing ? 'volume-high' : 'volume-off'} size={22} color={melodyStatus.playing ? palette.ink : palette.cyan} />
+          </Pressable>
+          <Text style={styles.disclaimer}>Recipes and nutrition are informational. Always follow your machine{`\u2019`}s official safety instructions.</Text>
+        </View>
       </Animated.View>
     </Screen>
   );
@@ -76,8 +104,6 @@ function IntroWordmark({ compact, motionEnabled }: { compact: boolean; motionEna
   const reveal = useSharedValue(animate ? 0 : 1);
   const shimmer = useSharedValue(animate ? 0 : 1);
   const sparkle = useSharedValue(animate ? 0 : 1);
-  const player = useAudioPlayer(CREAMYTUNER_INTRO_MELODY, { downloadFirst: true });
-  const status = useAudioPlayerStatus(player);
 
   useEffect(() => {
     if (!animate) {
@@ -99,9 +125,6 @@ function IntroWordmark({ compact, motionEnabled }: { compact: boolean; motionEna
     sparkle.value = withDelay(500, withRepeat(withSequence(withTiming(1, { duration: 260 }), withTiming(0.35, { duration: 520 })), 3, true));
   }, [animate, reveal, shimmer, sparkle]);
 
-  const replayMelody = () => {
-    void player.seekTo(0).then(() => player.play()).catch(() => undefined);
-  };
   const logoStyle = useAnimatedStyle(() => ({
     opacity: interpolate(reveal.value, [0, 0.4, 1], [0, 0.75, 1]),
     transform: [
@@ -127,10 +150,6 @@ function IntroWordmark({ compact, motionEnabled }: { compact: boolean; motionEna
       {animate ? <><AnimatedLinearGradient colors={['rgba(255,255,255,0)', 'rgba(255,244,225,0.8)', 'rgba(255,255,255,0)']} locations={[0, 0.5, 1]} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} pointerEvents="none" style={[styles.logoShimmer, shimmerStyle]} /><Animated.View pointerEvents="none" style={[styles.logoSpark, sparkleStyle]} /><Animated.View pointerEvents="none" style={[styles.logoSpark, styles.logoSparkTwo, sparkleStyle]} /></> : null}
     </Animated.View>
     <Text style={styles.wordTag}>BUILD {'\u00B7'} FREEZE {'\u00B7'} SPIN</Text>
-    <Pressable onPress={replayMelody} accessibilityRole="button" accessibilityLabel={status.playing ? 'Replay CreamyTuner intro melody' : 'Play CreamyTuner intro melody'} style={({ pressed }) => [styles.soundButton, status.playing && styles.soundButtonActive, pressed && styles.soundButtonPressed]}>
-      <Icon name={status.playing ? 'volume-high' : 'music-note'} size={15} color={status.playing ? palette.ink : palette.cyan} />
-      <Text style={[styles.soundButtonText, status.playing && styles.soundButtonTextActive]}>{status.playing ? 'Playing intro' : Platform.OS === 'web' ? 'Play 5-sec intro' : 'Play intro'}</Text>
-    </Pressable>
   </View>;
 }
 
@@ -146,11 +165,9 @@ const styles = StyleSheet.create({
   logoShimmer: { position: 'absolute', top: 5, bottom: 5, width: 58, borderRadius: 24 },
   logoSpark: { position: 'absolute', top: 5, right: 24, width: 10, height: 10, zIndex: 3, backgroundColor: '#FFF3B4' },
   logoSparkTwo: { top: 'auto', right: 'auto', bottom: 13, left: 31, width: 7, height: 7, backgroundColor: palette.cyan },
-  soundButton: { minHeight: 34, marginTop: 4, paddingHorizontal: 12, borderRadius: radii.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: 'rgba(78,217,232,0.5)', backgroundColor: 'rgba(9,13,32,0.7)' },
-  soundButtonActive: { backgroundColor: palette.cyan },
-  soundButtonPressed: { opacity: 0.72, transform: [{ scale: 0.98 }] },
-  soundButtonText: { color: palette.cyan, fontSize: 12, lineHeight: 16, fontWeight: '900', letterSpacing: 0.3 },
-  soundButtonTextActive: { color: palette.ink },
+  soundToggle: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(78,217,232,0.62)', backgroundColor: 'rgba(9,13,32,0.92)' },
+  soundToggleActive: { backgroundColor: palette.cyan, borderColor: palette.cyan },
+  soundTogglePressed: { opacity: 0.72, transform: [{ scale: 0.96 }] },
   title: { color: palette.text, fontSize: 32, lineHeight: 37, fontWeight: '900', letterSpacing: -0.8, textAlign: 'center' },
   titleCompact: { fontSize: 24, lineHeight: 28 },
   titleAccent: { color: palette.pink },
@@ -163,5 +180,6 @@ const styles = StyleSheet.create({
   heroPrompt: { minHeight: 36, paddingHorizontal: spacing.sm, borderRadius: radii.pill, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(9,13,32,0.72)' },
   heroPromptText: { color: palette.text, fontSize: 14, lineHeight: 19, fontWeight: '900' },
   bottom: { gap: spacing.sm, marginTop: spacing.xs },
-  disclaimer: { ...textStyles.caption, textAlign: 'center', color: palette.textFaint },
+  bottomMeta: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  disclaimer: { ...textStyles.caption, flex: 1, textAlign: 'center', color: palette.textFaint },
 });
