@@ -1,4 +1,4 @@
-import { router, usePathname } from 'expo-router';
+import { router, useLocalSearchParams, usePathname } from 'expo-router';
 import { Image } from 'expo-image';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
@@ -14,11 +14,12 @@ import { tutorialDraftSchema } from '@/src/types';
 
 export default function WelcomeScreen() {
   const { ready, settings, updateSettings } = useApp();
+  const { intro } = useLocalSearchParams<{ intro?: string }>();
   const pathname = usePathname();
   const { height, width } = useWindowDimensions();
   const compact = height < 900;
   const veryCompact = height < 700 || width < 390;
-  const tutorialComplete = settings.onboarded && settings.onboardingVersion >= CURRENT_ONBOARDING_VERSION;
+  const tutorialComplete = intro !== '1' && settings.onboarded && settings.onboardingVersion >= CURRENT_ONBOARDING_VERSION;
   const hasDraft = settings.tutorialDraft.stage !== 'machine' || settings.tutorialDraft.baseItems.length > 0 || settings.tutorialDraft.selectedIngredientIds.length > 0;
 
   useEffect(() => {
