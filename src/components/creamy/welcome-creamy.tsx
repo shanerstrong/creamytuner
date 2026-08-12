@@ -47,8 +47,10 @@ export function WelcomeCreamy({ compact = false, motionEnabled = true }: { compa
   const grabScale = useSharedValue(1);
   const lastFaceIndex = useRef(-1);
   const lastJokeIndex = useRef(-1);
+  const suppressPress = useRef(false);
   const faceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const jokeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [phase, setPhase] = useState<'entrance' | 'idle'>('entrance');
   const [firstFrameRendered, setFirstFrameRendered] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
@@ -152,13 +154,19 @@ export function WelcomeCreamy({ compact = false, motionEnabled = true }: { compa
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   }, [showFace, showRandomJoke]);
 
+  const markDragStarted = useCallback(() => {
+    if (suppressResetTimer.current) clearTimeout(suppressResetTimer.current);
+    suppressPress.current = true;
+  }, []);
+
   const finishDrag = useCallback(() => {
     showFace(TUTORIAL_CREAMY_FRAMES[14]);
     void Haptics.selectionAsync().catch(() => undefined);
+    suppressResetTimer.current = setTimeout(() => { suppressPress.current = false; }, 120);
   }, [showFace]);
 
   const mascotGesture = useMemo(() => {
-    const drag = Gesture.Pan()
+    return Gesture.Pan()
       .activateAfterLongPress(300)
       .minDistance(1)
       .onStart(() => {
@@ -166,6 +174,7 @@ export function WelcomeCreamy({ compact = false, motionEnabled = true }: { compa
         dragStartX.value = dragX.value;
         dragStartY.value = dragY.value;
         grabScale.value = withSpring(1.055, { damping: 12, stiffness: 180 });
+        runOnJS(markDragStarted)();
         runOnJS(beginDrag)();
       })
       .onUpdate((event) => {
@@ -180,17 +189,12 @@ export function WelcomeCreamy({ compact = false, motionEnabled = true }: { compa
         grabScale.value = withSpring(1, { damping: 10, stiffness: 150 });
         runOnJS(finishDrag)();
       });
-    const tap = Gesture.Tap()
-      .maxDuration(260)
-      .onEnd((_event, success) => {
-        if (success) runOnJS(triggerReaction)();
-      });
-    return Gesture.Exclusive(drag, tap);
-  }, [beginDrag, dragActive, dragStartX, dragStartY, dragX, dragY, finishDrag, grabScale, triggerReaction]);
+  }, [beginDrag, dragActive, dragStartX, dragStartY, dragX, dragY, finishDrag, grabScale, markDragStarted]);
 
   useEffect(() => () => {
     if (faceTimer.current) clearTimeout(faceTimer.current);
     if (jokeTimer.current) clearTimeout(jokeTimer.current);
+    if (suppressResetTimer.current) clearTimeout(suppressResetTimer.current);
   }, []);
 
   const stageStyle = useAnimatedStyle(() => ({
@@ -209,11 +213,6 @@ export function WelcomeCreamy({ compact = false, motionEnabled = true }: { compa
   const stage = (
     <Animated.View
       testID="welcome-creamy-stage"
-      accessible
-      accessibilityRole={animate ? 'button' : 'image'}
-      accessibilityLabel="Creamy mascot"
-      accessibilityHint={animate ? 'Tap for a funny face and joke. Press and hold, then drag Creamy around.' : undefined}
-      onAccessibilityTap={animate ? triggerReaction : undefined}
       style={[styles.stage, compact && styles.stageCompact, stageStyle]}
     >
       <Image
@@ -268,7 +267,21 @@ export function WelcomeCreamy({ compact = false, motionEnabled = true }: { compa
           <View style={styles.jokeTail} />
         </Animated.View>
       ) : null}
-      {animate ? <GestureDetector gesture={mascotGesture}>{stage}</GestureDetector> : stage}
+      {animate ? (
+        <GestureDetector gesture={mascotGesture}>
+          <Pressable
+            onPress={() => { if (!suppressPress.current) triggerReaction(); }}
+            accessibilityRole="button"
+            accessibilityLabel="Creamy mascot"
+            accessibilityHint="Tap for a funny face and joke. Press and hold, then drag Creamy around."
+            style={styles.activationSurface}
+          >
+            {stage}
+          </Pressable>
+        </GestureDetector>
+      ) : (
+        <View accessible accessibilityRole="image" accessibilityLabel="Creamy mascot">{stage}</View>
+      )}
     </View>
   );
 }
@@ -276,6 +289,7 @@ export function WelcomeCreamy({ compact = false, motionEnabled = true }: { compa
 const styles = StyleSheet.create({
   tapTarget: { position: 'relative', width: 320, height: 352, alignItems: 'center', justifyContent: 'center' },
   tapTargetCompact: { width: 242, height: 266 },
+  activationSurface: { alignItems: 'center', justifyContent: 'center' },
   stage: { position: 'relative', zIndex: 1, width: 320, height: 352, backgroundColor: '#030C26', overflow: 'hidden' },
   stageCompact: { width: 242, height: 266 },
   media: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%', backgroundColor: '#030C26' },

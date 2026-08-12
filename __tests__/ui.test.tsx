@@ -119,7 +119,7 @@ describe('welcome mascot', () => {
     jest.useFakeTimers();
     const screen = await render(<WelcomeCreamy />);
 
-    await fireEvent(screen.getByRole('button', { name: 'Creamy mascot' }), 'accessibilityTap');
+    await fireEvent.press(screen.getByRole('button', { name: 'Creamy mascot' }));
 
     expect(screen.getByTestId('welcome-creamy-reaction-face')).toBeTruthy();
     expect(screen.getByTestId('welcome-creamy-joke')).toBeTruthy();

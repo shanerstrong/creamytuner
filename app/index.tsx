@@ -15,9 +15,9 @@ import { tutorialDraftSchema } from '@/src/types';
 export default function WelcomeScreen() {
   const { ready, settings, updateSettings } = useApp();
   const pathname = usePathname();
-  const { height } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
   const compact = height < 900;
-  const veryCompact = height < 700;
+  const veryCompact = height < 700 || width < 390;
   const tutorialComplete = settings.onboarded && settings.onboardingVersion >= CURRENT_ONBOARDING_VERSION;
   const hasDraft = settings.tutorialDraft.stage !== 'machine' || settings.tutorialDraft.baseItems.length > 0 || settings.tutorialDraft.selectedIngredientIds.length > 0;
 
@@ -66,9 +66,9 @@ const styles = StyleSheet.create({
   contentCompact: { paddingTop: spacing.xs, paddingBottom: spacing.xs },
   brand: { alignItems: 'center', gap: spacing.md },
   brandCompact: { gap: 6 },
-  wordmarkWrap: { alignItems: 'center' },
-  wordmarkImage: { width: 340, height: 96 },
-  wordmarkImageCompact: { width: 278, height: 78 },
+  wordmarkWrap: { width: '100%', maxWidth: 340, alignItems: 'center' },
+  wordmarkImage: { width: '100%', maxWidth: 340, aspectRatio: 1671 / 466 },
+  wordmarkImageCompact: { maxWidth: 278 },
   wordTag: { color: palette.cyan, fontSize: 12, lineHeight: 16, fontWeight: '900', letterSpacing: 1.7, marginTop: -5 },
   title: { color: palette.text, fontSize: 32, lineHeight: 37, fontWeight: '900', letterSpacing: -0.8, textAlign: 'center' },
   titleCompact: { fontSize: 24, lineHeight: 28 },
