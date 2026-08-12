@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams, usePathname } from 'expo-router';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
@@ -23,6 +24,8 @@ import { CURRENT_ONBOARDING_VERSION } from '@/src/domain/tutorial';
 import { useApp } from '@/src/providers/app-provider';
 import { palette, radii, spacing } from '@/src/theme';
 import { tutorialDraftSchema } from '@/src/types';
+
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
 export default function WelcomeScreen() {
   const { ready, settings, updateSettings } = useApp();
@@ -109,7 +112,7 @@ function IntroWordmark({ compact, motionEnabled }: { compact: boolean; motionEna
   const shimmerStyle = useAnimatedStyle(() => ({
     opacity: interpolate(shimmer.value, [0, 0.16, 0.82, 1], [0, 0.95, 0.72, 0]),
     transform: [
-      { translateX: interpolate(shimmer.value, [0, 1], [-92, 190]) },
+      { translateX: interpolate(shimmer.value, [0, 1], [-130, 390]) },
       { rotate: '-18deg' },
     ],
   }));
@@ -120,8 +123,8 @@ function IntroWordmark({ compact, motionEnabled }: { compact: boolean; motionEna
 
   return <View style={[styles.wordmarkWrap, compact && styles.wordmarkWrapCompact]}>
     <Animated.View style={[styles.logoMotion, logoStyle]}>
-      <BrandWordmark large />
-      {animate ? <><Animated.View pointerEvents="none" style={[styles.logoShimmer, shimmerStyle]} /><Animated.View pointerEvents="none" style={[styles.logoSpark, sparkleStyle]} /><Animated.View pointerEvents="none" style={[styles.logoSpark, styles.logoSparkTwo, sparkleStyle]} /></> : null}
+      <BrandWordmark large compact={compact} />
+      {animate ? <><AnimatedLinearGradient colors={['rgba(255,255,255,0)', 'rgba(255,244,225,0.8)', 'rgba(255,255,255,0)']} locations={[0, 0.5, 1]} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} pointerEvents="none" style={[styles.logoShimmer, shimmerStyle]} /><Animated.View pointerEvents="none" style={[styles.logoSpark, sparkleStyle]} /><Animated.View pointerEvents="none" style={[styles.logoSpark, styles.logoSparkTwo, sparkleStyle]} /></> : null}
     </Animated.View>
     <Text style={styles.wordTag}>BUILD {'\u00B7'} FREEZE {'\u00B7'} SPIN</Text>
     <Pressable onPress={replayMelody} accessibilityRole="button" accessibilityLabel={status.playing ? 'Replay CreamyTuner intro melody' : 'Play CreamyTuner intro melody'} style={({ pressed }) => [styles.soundButton, status.playing && styles.soundButtonActive, pressed && styles.soundButtonPressed]}>
@@ -138,9 +141,9 @@ const styles = StyleSheet.create({
   brandCompact: { gap: 6 },
   wordmarkWrap: { width: '100%', maxWidth: 340, alignItems: 'center' },
   wordmarkWrapCompact: { maxWidth: 278 },
-  logoMotion: { width: '100%', alignItems: 'center' },
+  logoMotion: { width: '100%', alignItems: 'center', overflow: 'hidden' },
   wordTag: { color: palette.cyan, fontSize: 12, lineHeight: 16, fontWeight: '900', letterSpacing: 1.7, marginTop: -5 },
-  logoShimmer: { position: 'absolute', top: 8, bottom: 8, width: 32, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.18)' },
+  logoShimmer: { position: 'absolute', top: 5, bottom: 5, width: 58, borderRadius: 24 },
   logoSpark: { position: 'absolute', top: 5, right: 24, width: 10, height: 10, zIndex: 3, backgroundColor: '#FFF3B4' },
   logoSparkTwo: { top: 'auto', right: 'auto', bottom: 13, left: 31, width: 7, height: 7, backgroundColor: palette.cyan },
   soundButton: { minHeight: 34, marginTop: 4, paddingHorizontal: 12, borderRadius: radii.pill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: 'rgba(78,217,232,0.5)', backgroundColor: 'rgba(9,13,32,0.7)' },

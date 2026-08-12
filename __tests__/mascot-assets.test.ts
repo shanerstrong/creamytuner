@@ -4,7 +4,6 @@ import path from 'node:path';
 const root = path.resolve(__dirname, '..');
 const welcomeHero = path.join(root, 'assets', 'images', 'mascot', 'welcome-hero-v4.png');
 const tutorial = path.join(root, 'assets', 'images', 'mascot', 'rendered', 'tutorial');
-const wordmark = path.join(root, 'assets', 'images', 'brand', 'creamytuner-wordmark-ai.png');
 const introMelody = path.join(root, 'assets', 'audio', 'creamytuner-intro.wav');
 
 function pngMetadata(file: string) {
@@ -14,10 +13,6 @@ function pngMetadata(file: string) {
 }
 
 describe('rendered Creamy assets', () => {
-  test('ships the shared transparent CreamyTuner wordmark', () => {
-    expect(pngMetadata(wordmark)).toEqual({ width: 1671, height: 466, colorType: 6 });
-  });
-
   test('ships an exact five-second original intro melody', () => {
     const bytes = readFileSync(introMelody);
     expect(bytes.subarray(0, 4).toString('ascii')).toBe('RIFF');

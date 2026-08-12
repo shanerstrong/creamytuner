@@ -38,7 +38,7 @@ import { AppHeader, BrandWordmark } from '@/src/components/ui';
 const nutrition = { calories: 325, protein: 30, carbs: 20, sugar: 12, addedSugar: 6, fat: 8, fiber: 2 };
 
 describe('shared brand', () => {
-  it('uses the static AI wordmark by itself and in standard app headers', async () => {
+  it('uses the clean static wordmark by itself and in standard app headers', async () => {
     const wordmark = await render(<BrandWordmark />);
     expect(wordmark.getByRole('image', { name: 'CreamyTuner' })).toBeTruthy();
 

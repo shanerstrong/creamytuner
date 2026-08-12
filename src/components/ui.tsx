@@ -1,6 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { usePathname } from 'expo-router';
 import React, { type ComponentProps, type ReactNode, useEffect, useRef } from 'react';
@@ -22,7 +21,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { recipeImages } from '@/src/assets';
-import { CREAMYTUNER_WORDMARK } from '@/src/components/brand/brand-assets';
 import { gradients, palette, radii, shadows, spacing } from '@/src/theme';
 import type { Nutrition, Recipe } from '@/src/types';
 import { NutritionSummary } from '@/src/components/nutrition';
@@ -66,9 +64,11 @@ export function LogoMark({ size = 64 }: { size?: number }) {
 }
 
 export function BrandWordmark({ large = false, compact = false }: { large?: boolean; compact?: boolean }) {
+  const textSizeStyle = large && compact ? styles.wordmarkTextLargeCompact : large ? styles.wordmarkTextLarge : compact ? styles.wordmarkTextCompact : undefined;
   return (
-    <View style={[styles.wordmarkLogoWrap, large && styles.wordmarkLogoWrapLarge, compact && styles.wordmarkLogoWrapCompact]} accessible accessibilityRole="image" accessibilityLabel="CreamyTuner">
-      <ExpoImage source={CREAMYTUNER_WORDMARK} contentFit="contain" cachePolicy="memory-disk" accessible={false} style={styles.wordmarkLogo} />
+    <View style={[styles.wordmarkLogoWrap, large && styles.wordmarkLogoWrapLarge, compact && !large && styles.wordmarkLogoWrapCompact, large && compact && styles.wordmarkLogoWrapLargeCompact]} accessible accessibilityRole="image" accessibilityLabel="CreamyTuner">
+      <Text accessible={false} style={[styles.wordmarkText, styles.wordmarkTextDepth, textSizeStyle]}><Text style={styles.wordmarkCream}>Creamy</Text><Text style={styles.wordmarkTuner}>Tuner</Text></Text>
+      <Text accessible={false} style={[styles.wordmarkText, textSizeStyle]}><Text style={styles.wordmarkCream}>Creamy</Text><Text style={styles.wordmarkTuner}>Tuner</Text></Text>
     </View>
   );
 }
@@ -206,10 +206,17 @@ const styles = StyleSheet.create({
   headerSubtitle: { color: palette.textMuted, fontSize: 14, lineHeight: 19, marginTop: 2, textAlign: 'center' },
   iconButton: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.055)' },
   logoMark: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden', ...shadows.glow },
-  wordmarkLogoWrap: { width: 172, aspectRatio: 1671 / 466 },
-  wordmarkLogoWrapLarge: { width: '100%', maxWidth: 340 },
-  wordmarkLogoWrapCompact: { width: 122 },
-  wordmarkLogo: { width: '100%', height: '100%' },
+  wordmarkLogoWrap: { width: 172, height: 42, alignItems: 'center', justifyContent: 'center' },
+  wordmarkLogoWrapLarge: { width: '100%', maxWidth: 340, height: 78 },
+  wordmarkLogoWrapCompact: { width: 122, height: 32 },
+  wordmarkLogoWrapLargeCompact: { maxWidth: 278, height: 64 },
+  wordmarkText: { color: '#FFB8C8', fontSize: 28, lineHeight: 34, fontWeight: '900', fontStyle: 'italic', letterSpacing: -1.5, textAlign: 'center', textShadowColor: '#621643', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
+  wordmarkTextLarge: { fontSize: 54, lineHeight: 64, letterSpacing: -3 },
+  wordmarkTextLargeCompact: { fontSize: 43, lineHeight: 52, letterSpacing: -2.4 },
+  wordmarkTextCompact: { fontSize: 20, lineHeight: 25, letterSpacing: -1 },
+  wordmarkTextDepth: { position: 'absolute', color: '#48163F', transform: [{ translateY: 4 }], textShadowColor: '#160D32', textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 1 },
+  wordmarkCream: { color: '#FFD3CF' },
+  wordmarkTuner: { color: '#FF4E7E' },
   card: { borderRadius: radii.md, borderWidth: 1, borderColor: palette.border, overflow: 'hidden', backgroundColor: palette.panel },
   pressableCard: { width: '100%', borderColor: 'rgba(174, 190, 238, 0.28)' },
   cardContent: { flex: 1, zIndex: 1 },
