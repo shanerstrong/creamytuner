@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { usePathname } from 'expo-router';
 import React, { type ComponentProps, type ReactNode, useEffect, useRef } from 'react';
@@ -21,6 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { recipeImages } from '@/src/assets';
+import { CREAMYTUNER_WORDMARK } from '@/src/components/brand/brand-assets';
 import { gradients, palette, radii, shadows, spacing } from '@/src/theme';
 import type { Nutrition, Recipe } from '@/src/types';
 import { NutritionSummary } from '@/src/components/nutrition';
@@ -63,11 +65,10 @@ export function LogoMark({ size = 64 }: { size?: number }) {
   );
 }
 
-export function BrandWordmark({ large = false }: { large?: boolean }) {
+export function BrandWordmark({ large = false, compact = false }: { large?: boolean; compact?: boolean }) {
   return (
-    <View style={styles.wordmarkRow} accessibilityLabel="Creamy Tuner">
-      <Text style={[styles.wordmark, large && styles.wordmarkLarge]}>Creamy</Text>
-      <Text style={[styles.wordmark, styles.wordmarkAccent, large && styles.wordmarkLarge]}> Tuner</Text>
+    <View style={[styles.wordmarkLogoWrap, large && styles.wordmarkLogoWrapLarge, compact && styles.wordmarkLogoWrapCompact]} accessible accessibilityRole="image" accessibilityLabel="CreamyTuner">
+      <ExpoImage source={CREAMYTUNER_WORDMARK} contentFit="contain" cachePolicy="memory-disk" accessible={false} style={styles.wordmarkLogo} />
     </View>
   );
 }
@@ -77,6 +78,7 @@ export function AppHeader({ title, subtitle, left, right }: { title: string; sub
     <View style={styles.header}>
       <View style={styles.headerSide}>{left}</View>
       <View style={styles.headerCenter}>
+        <BrandWordmark compact />
         <Text style={styles.headerTitle}>{title}</Text>
         {subtitle ? <Text style={styles.headerSubtitle}>{subtitle}</Text> : null}
       </View>
@@ -196,18 +198,18 @@ const styles = StyleSheet.create({
   screenInner: { width: '100%', maxWidth: 560, alignSelf: 'center', paddingHorizontal: spacing.md, paddingBottom: spacing.xl },
   glowTop: { position: 'absolute', width: 260, height: 260, borderRadius: 130, backgroundColor: 'rgba(177, 43, 211, 0.10)', top: -120, right: -100 },
   glowBottom: { position: 'absolute', width: 260, height: 260, borderRadius: 130, backgroundColor: 'rgba(42, 116, 203, 0.08)', bottom: -100, left: -130 },
-  header: { minHeight: 64, flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs },
+  header: { minHeight: 108, flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.xs },
   headerSide: { width: 50, alignItems: 'flex-start' },
   headerRight: { alignItems: 'flex-end' },
-  headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { color: palette.text, fontSize: 22, lineHeight: 28, fontWeight: '800', textAlign: 'center' },
+  headerCenter: { flex: 1, alignItems: 'center', gap: 2 },
+  headerTitle: { color: palette.text, fontSize: 21, lineHeight: 27, fontWeight: '800', textAlign: 'center' },
   headerSubtitle: { color: palette.textMuted, fontSize: 14, lineHeight: 19, marginTop: 2, textAlign: 'center' },
   iconButton: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.055)' },
   logoMark: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden', ...shadows.glow },
-  wordmarkRow: { flexDirection: 'row', alignItems: 'baseline' },
-  wordmark: { color: palette.text, fontSize: 25, fontWeight: '900', letterSpacing: -1 },
-  wordmarkLarge: { fontSize: 34, letterSpacing: -1.5 },
-  wordmarkAccent: { color: palette.pink },
+  wordmarkLogoWrap: { width: 172, aspectRatio: 1671 / 466 },
+  wordmarkLogoWrapLarge: { width: '100%', maxWidth: 340 },
+  wordmarkLogoWrapCompact: { width: 122 },
+  wordmarkLogo: { width: '100%', height: '100%' },
   card: { borderRadius: radii.md, borderWidth: 1, borderColor: palette.border, overflow: 'hidden', backgroundColor: palette.panel },
   pressableCard: { width: '100%', borderColor: 'rgba(174, 190, 238, 0.28)' },
   cardContent: { flex: 1, zIndex: 1 },

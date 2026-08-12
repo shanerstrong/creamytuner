@@ -4,7 +4,6 @@ export const WELCOME_CREAMY_HERO = require('@/assets/images/mascot/welcome-hero-
 export const WELCOME_CREAMY_POSTER = require('@/assets/images/mascot/welcome/creamy-poster.png') as ImageSource;
 export const WELCOME_CREAMY_ENTRANCE = require('@/assets/images/mascot/welcome/creamy-entrance.mp4');
 export const WELCOME_CREAMY_IDLE = require('@/assets/images/mascot/welcome/creamy-idle.mp4');
-export const WELCOME_WORDMARK_AI = require('@/assets/images/brand/creamytuner-wordmark-ai.png') as ImageSource;
 
 export const TUTORIAL_CREAMY_FRAMES: ImageSource[] = [
   require('@/assets/images/mascot/rendered/tutorial/01-empty-bored-closed.png'),

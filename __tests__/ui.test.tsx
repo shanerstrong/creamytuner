@@ -33,8 +33,20 @@ jest.mock('expo-video', () => {
 import { BuilderQuestionStep, CompactProgress } from '@/src/components/builder/simple-steps';
 import { WelcomeCreamy } from '@/src/components/creamy/welcome-creamy';
 import { NutritionFactsPanel, NutritionSummary } from '@/src/components/nutrition';
+import { AppHeader, BrandWordmark } from '@/src/components/ui';
 
 const nutrition = { calories: 325, protein: 30, carbs: 20, sugar: 12, addedSugar: 6, fat: 8, fiber: 2 };
+
+describe('shared brand', () => {
+  it('uses the static AI wordmark by itself and in standard app headers', async () => {
+    const wordmark = await render(<BrandWordmark />);
+    expect(wordmark.getByRole('image', { name: 'CreamyTuner' })).toBeTruthy();
+
+    const header = await render(<AppHeader title="Saved Recipes" />);
+    expect(header.getByRole('image', { name: 'CreamyTuner' })).toBeTruthy();
+    expect(header.getByText('Saved Recipes')).toBeTruthy();
+  });
+});
 
 describe('nutrition presentation', () => {
   it('keeps percent daily value out of the summary', async () => {

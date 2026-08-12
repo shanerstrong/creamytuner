@@ -4,6 +4,8 @@ import path from 'node:path';
 const root = path.resolve(__dirname, '..');
 const welcomeHero = path.join(root, 'assets', 'images', 'mascot', 'welcome-hero-v4.png');
 const tutorial = path.join(root, 'assets', 'images', 'mascot', 'rendered', 'tutorial');
+const wordmark = path.join(root, 'assets', 'images', 'brand', 'creamytuner-wordmark-ai.png');
+const introMelody = path.join(root, 'assets', 'audio', 'creamytuner-intro.wav');
 
 function pngMetadata(file: string) {
   const bytes = readFileSync(file);
@@ -12,6 +14,21 @@ function pngMetadata(file: string) {
 }
 
 describe('rendered Creamy assets', () => {
+  test('ships the shared transparent CreamyTuner wordmark', () => {
+    expect(pngMetadata(wordmark)).toEqual({ width: 1671, height: 466, colorType: 6 });
+  });
+
+  test('ships an exact five-second original intro melody', () => {
+    const bytes = readFileSync(introMelody);
+    expect(bytes.subarray(0, 4).toString('ascii')).toBe('RIFF');
+    expect(bytes.subarray(8, 12).toString('ascii')).toBe('WAVE');
+    const sampleRate = bytes.readUInt32LE(24);
+    const byteRate = bytes.readUInt32LE(28);
+    const dataBytes = bytes.readUInt32LE(40);
+    expect(sampleRate).toBe(44_100);
+    expect(dataBytes / byteRate).toBe(5);
+  });
+
   test('ships the generated high-resolution Welcome hero', () => {
     expect(existsSync(welcomeHero)).toBe(true);
     expect(statSync(welcomeHero).size).toBeGreaterThan(1_000_000);

@@ -8,7 +8,7 @@ import { useReducedMotion } from 'react-native-reanimated';
 import { FooterCreamy, type CreamyTip, type TutorialAddition } from '@/src/components/tutorial/footer-creamy';
 import { OverflowAwareScroll } from '@/src/components/tutorial/overflow-aware-scroll';
 import { TutorialAmountEditor } from '@/src/components/tutorial/tutorial-amount-editor';
-import { GlassCard, GradientButton, Icon, LoadingScreen, Screen, SearchField, type IconName } from '@/src/components/ui';
+import { BrandWordmark, GlassCard, GradientButton, Icon, LoadingScreen, Screen, SearchField, type IconName } from '@/src/components/ui';
 import { machineById, machines } from '@/src/data/machines';
 import { createFreezeTimer } from '@/src/domain/freeze-timer';
 import { ALLERGY_SAFETY_NOTICE, filterIngredientsForPreferences, foodAllergenLabels, getIngredientEligibility, ingredientMatchesPreferences } from '@/src/domain/dietary';
@@ -578,7 +578,7 @@ export default function TutorialScreen() {
         onFreezeLater={() => { void freezeLater(); }}
       />
     }>
-      {!compact ? <Text style={styles.tutorialHeader}>Your first pint</Text> : null}
+      <View style={styles.tutorialBrand}><BrandWordmark compact />{!compact ? <Text style={styles.tutorialHeader}>Your first pint</Text> : null}</View>
       <TutorialProgress stage={draft.stage} />
       <Animated.View key={`${draft.stage}-${draft.firstCycleState}-${draft.finalCycleState}`} style={[styles.animatedPage, Platform.OS === 'web' ? undefined : { transform: [{ translateX: slide }] }]}>{page}</Animated.View>
       {removed ? <Animated.View style={[styles.undo, { opacity: undoOpacity }]}><Pressable onPress={undoRemove} accessibilityRole="button" accessibilityLabel={`Undo removing ${ingredients.find((item) => item.id === removed.item.ingredientId)?.name ?? 'ingredient'}`} style={styles.undoButton}><Text style={styles.undoText}>Ingredient removed</Text><Text style={styles.undoAction}>Undo</Text></Pressable></Animated.View> : null}
@@ -917,7 +917,8 @@ const styles = StyleSheet.create({
   keyboardAvoider: { flex: 1 },
   content: { flex: 1, paddingBottom: 0 },
   animatedPage: { flex: 1, minHeight: 0 },
-  tutorialHeader: { color: palette.text, fontSize: 17, lineHeight: 21, fontWeight: '800', textAlign: 'center', marginTop: 1 },
+  tutorialBrand: { alignItems: 'center', gap: 1, marginTop: 1 },
+  tutorialHeader: { color: palette.text, fontSize: 17, lineHeight: 21, fontWeight: '800', textAlign: 'center' },
   progress: { marginTop: -2, marginBottom: spacing.xs },
   progressTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   progressPhase: { color: palette.cyan, fontSize: 13, lineHeight: 18, fontWeight: '900', letterSpacing: 0.7 },
