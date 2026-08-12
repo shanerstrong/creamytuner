@@ -67,7 +67,7 @@ export function BrandWordmark({ large = false, compact = false }: { large?: bool
   const textSizeStyle = large && compact ? styles.wordmarkTextLargeCompact : large ? styles.wordmarkTextLarge : compact ? styles.wordmarkTextCompact : undefined;
   return (
     <View style={[styles.wordmarkLogoWrap, large && styles.wordmarkLogoWrapLarge, compact && !large && styles.wordmarkLogoWrapCompact, large && compact && styles.wordmarkLogoWrapLargeCompact]} accessible accessibilityRole="image" accessibilityLabel="CreamyTuner">
-      <Text accessible={false} style={[styles.wordmarkText, styles.wordmarkTextDepth, textSizeStyle]}><Text style={styles.wordmarkCream}>Creamy</Text><Text style={styles.wordmarkTuner}>Tuner</Text></Text>
+      <Text accessible={false} style={[styles.wordmarkText, styles.wordmarkTextDepth, textSizeStyle]}>CreamyTuner</Text>
       <Text accessible={false} style={[styles.wordmarkText, textSizeStyle]}><Text style={styles.wordmarkCream}>Creamy</Text><Text style={styles.wordmarkTuner}>Tuner</Text></Text>
     </View>
   );
@@ -210,12 +210,12 @@ const styles = StyleSheet.create({
   wordmarkLogoWrapLarge: { width: '100%', maxWidth: 340, height: 78 },
   wordmarkLogoWrapCompact: { width: 122, height: 32 },
   wordmarkLogoWrapLargeCompact: { maxWidth: 278, height: 64 },
-  wordmarkText: { color: '#FFB8C8', fontSize: 28, lineHeight: 34, fontWeight: '900', fontStyle: 'italic', letterSpacing: -1.5, textAlign: 'center', textShadowColor: '#621643', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
-  wordmarkTextLarge: { fontSize: 54, lineHeight: 64, letterSpacing: -3 },
-  wordmarkTextLargeCompact: { fontSize: 43, lineHeight: 52, letterSpacing: -2.4 },
-  wordmarkTextCompact: { fontSize: 20, lineHeight: 25, letterSpacing: -1 },
-  wordmarkTextDepth: { position: 'absolute', color: '#48163F', transform: [{ translateY: 4 }], textShadowColor: '#160D32', textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 1 },
-  wordmarkCream: { color: '#FFD3CF' },
+  wordmarkText: { color: '#FF8EAA', fontFamily: Platform.select({ ios: 'Arial Black', android: 'sans-serif-black', web: 'Arial Black, Segoe UI Black, sans-serif' }), fontSize: 25, lineHeight: 32, fontWeight: '900', letterSpacing: -1.6, textAlign: 'center', textShadowColor: '#FFD0D0', textShadowOffset: { width: 0, height: -1 }, textShadowRadius: 1 },
+  wordmarkTextLarge: { fontSize: 46, lineHeight: 58, letterSpacing: -2.8 },
+  wordmarkTextLargeCompact: { fontSize: 37, lineHeight: 48, letterSpacing: -2.2 },
+  wordmarkTextCompact: { fontSize: 18, lineHeight: 24, letterSpacing: -1.1 },
+  wordmarkTextDepth: { position: 'absolute', color: '#5B1748', transform: [{ translateY: 6 }], textShadowColor: '#1B0B2C', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 2 },
+  wordmarkCream: { color: '#FFB2C2' },
   wordmarkTuner: { color: '#FF4E7E' },
   card: { borderRadius: radii.md, borderWidth: 1, borderColor: palette.border, overflow: 'hidden', backgroundColor: palette.panel },
   pressableCard: { width: '100%', borderColor: 'rgba(174, 190, 238, 0.28)' },
